@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
-
+from agents.devops_agent import commit_code
 app = FastAPI()
 
 @app.get("/")
@@ -13,3 +13,7 @@ def build():
     story = get_user_story()
     build_code(story)
     return {"status": "API generated"}
+@app.get("/commit")
+def commit():
+    result = commit_code()
+    return result
