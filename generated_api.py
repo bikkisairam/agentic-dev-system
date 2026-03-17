@@ -1,15 +1,17 @@
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 app = FastAPI()
 
+dummy_weather_data = {
+    "temperature": 25,
+    "humidity": 60,
+    "weather": "Sunny"
+}
+
 @app.get("/weather")
-def get_weather():
-    return {
-        "temperature": 25,
-        "humidity": 60,
-        "weather": "Sunny"
-    }
+def read_root():
+    return dummy_weather_data
 
 if __name__ == '__main__':
     uvicorn.run(app, host='localhost', port=8000)
