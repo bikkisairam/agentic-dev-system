@@ -1,15 +1,11 @@
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 app = FastAPI()
 
 @app.get("/weather")
-def read_root():
-    return {
-        "temperature": 25.6,
-        "humidity": 43.1,
-        "weather": "Sunny"
-    }
+async def read_root():
+    return {"temperature": 25.3, "humidity": 64, "weather": "Sunny"}
 
 if __name__ == '__main__':
     uvicorn.run(app, host='localhost', port=8000)
