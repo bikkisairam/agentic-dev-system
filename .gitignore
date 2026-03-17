@@ -1,0 +1,15 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+
+# Angular
+ui/node_modules/
+ui/dist/
+ui/.angular/
+
+# OS
+.DS_Store
+Thumbs.db
