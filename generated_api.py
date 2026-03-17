@@ -1,14 +1,14 @@
-import uvicorn
 from fastapi import FastAPI
+import uvicorn
 
 app = FastAPI()
 
 @app.get("/weather")
-async def read_root():
+def read_root():
     return {
-        "temperature": 25.3,
-        "humidity": 0.64,
-        "weather": "sunny"
+        "temperature": 25.6,
+        "humidity": 43.1,
+        "weather": "Sunny"
     }
 
 if __name__ == '__main__':

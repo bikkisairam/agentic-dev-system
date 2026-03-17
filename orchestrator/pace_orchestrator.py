@@ -103,9 +103,9 @@ def run_pace():
     final_state = graph.invoke(initial_state)
 
     return {
-        "plan": f"Story fetched: {final_state['story'].get('title', 'N/A')}",
-        "act": f"Code generated ({len(final_state['generated_code'])} chars)",
-        "check": final_state["test_result"],
+        "plan":     final_state["story"],
+        "act":      final_state["generated_code"],
+        "check":    final_state["test_result"],
         "evaluate": final_state["commit_result"],
-        "errors": final_state["errors"]
+        "errors":   final_state["errors"]
     }

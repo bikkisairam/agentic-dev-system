@@ -24,7 +24,6 @@ export class App {
 
   pipelineRunning = signal(false);
   serverOnline = signal<boolean | null>(null);
-  selectedStage = signal<Stage | null>(null);
 
   stages = signal<Stage[]>([
     { id: 'plan',     label: 'Plan',     icon: '📋', status: 'idle', output: null },
@@ -33,9 +32,7 @@ export class App {
     { id: 'evaluate', label: 'Evaluate', icon: '🚀', status: 'idle', output: null },
   ]);
 
-  ngOnInit() {
-    this.pingServer();
-  }
+  ngOnInit() { this.pingServer(); }
 
   pingServer() {
     this.api.getStatus().subscribe({
@@ -48,19 +45,10 @@ export class App {
     this.stages.update(stages =>
       stages.map(s => s.id === id ? { ...s, status, output } : s)
     );
-    if (this.selectedStage()?.id === id) {
-      const updated = this.stages().find(s => s.id === id)!;
-      this.selectedStage.set(updated);
-    }
-  }
-
-  selectStage(stage: Stage) {
-    this.selectedStage.set(stage);
   }
 
   resetStages() {
     this.stages.update(stages => stages.map(s => ({ ...s, status: 'idle', output: null })));
-    this.selectedStage.set(null);
   }
 
   runFullPipeline() {
@@ -88,7 +76,7 @@ export class App {
   runPlan() {
     this.setStageStatus('plan', 'running');
     this.api.getStory().subscribe({
-      next: (res) => this.setStageStatus('plan', 'success', res),
+      next: (res) => this.setStageStatus('plan', 'success', res.story ?? res),
       error: (err) => this.setStageStatus('plan', 'error', err.error)
     });
   }
@@ -96,7 +84,7 @@ export class App {
   runBuild() {
     this.setStageStatus('build', 'running');
     this.api.build().subscribe({
-      next: (res) => this.setStageStatus('build', 'success', res),
+      next: (res) => this.setStageStatus('build', 'success', res.code ?? res),
       error: (err) => this.setStageStatus('build', 'error', err.error)
     });
   }
@@ -117,7 +105,8 @@ export class App {
     });
   }
 
-  triggerStage(stage: Stage) {
+  triggerStage(stage: Stage, event: Event) {
+    event.stopPropagation();
     const actions: Record<string, () => void> = {
       plan:     () => this.runPlan(),
       build:    () => this.runBuild(),
@@ -127,13 +116,23 @@ export class App {
     actions[stage.id]?.();
   }
 
-  formatOutput(output: any): string {
-    if (!output) return '';
-    if (typeof output === 'string') return output;
-    return JSON.stringify(output, null, 2);
-  }
-
   get completedCount(): number {
     return this.stages().filter(s => s.status === 'success').length;
+  }
+
+  get hasAnyOutput(): boolean {
+    return this.stages().some(s => s.output !== null);
+  }
+
+  stageOf(id: string): Stage {
+    return this.stages().find(s => s.id === id)!;
+  }
+
+  checkEntries(checks: Record<string, boolean>): { key: string; pass: boolean }[] {
+    return Object.entries(checks ?? {}).map(([key, pass]) => ({ key, pass }));
+  }
+
+  formatJson(obj: any): string {
+    return JSON.stringify(obj, null, 2);
   }
 }

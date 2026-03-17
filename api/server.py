@@ -36,7 +36,7 @@ def build():
     try:
         story = get_user_story()
         code = build_code(story)
-        return {"status": "code generated", "preview": code[:500]}
+        return {"status": "code generated", "code": code}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -44,15 +44,8 @@ def build():
 @app.post("/test")
 def test():
     try:
-        story = get_user_story()
-        test_code = generate_tests(story)
         result = run_tests()
-        return {
-            "status": "tests ran",
-            "passed": result["passed"],
-            "test_preview": test_code[:300],
-            "output": result["stdout"][:1000]
-        }
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
