@@ -29,7 +29,8 @@ export class App {
     { id: 'plan',     label: 'Plan',     icon: '📋', status: 'idle', output: null },
     { id: 'build',    label: 'Build',    icon: '🔨', status: 'idle', output: null },
     { id: 'check',    label: 'Check',    icon: '🧪', status: 'idle', output: null },
-    { id: 'evaluate', label: 'Evaluate', icon: '🚀', status: 'idle', output: null },
+    { id: 'evaluate', label: 'Evaluate', icon: '✅', status: 'idle', output: null },
+    { id: 'push',     label: 'Push',     icon: '📤', status: 'idle', output: null },
   ]);
 
   ngOnInit() { this.pingServer(); }
@@ -63,6 +64,7 @@ export class App {
         this.setStageStatus('build',    'success', res.act);
         this.setStageStatus('check',    res.check?.passed ? 'success' : 'error', res.check);
         this.setStageStatus('evaluate', res.evaluate?.status === 'committed' ? 'success' : 'error', res.evaluate);
+        this.setStageStatus('push',     res.push?.status === 'pushed' ? 'success' : 'error', res.push);
       },
       error: (err) => {
         this.pipelineRunning.set(false);
@@ -105,6 +107,14 @@ export class App {
     });
   }
 
+  runPush() {
+    this.setStageStatus('push', 'running');
+    this.api.push().subscribe({
+      next: (res) => this.setStageStatus('push', res.status === 'pushed' ? 'success' : 'error', res),
+      error: (err) => this.setStageStatus('push', 'error', err.error)
+    });
+  }
+
   triggerStage(stage: Stage, event: Event) {
     event.stopPropagation();
     const actions: Record<string, () => void> = {
@@ -112,12 +122,17 @@ export class App {
       build:    () => this.runBuild(),
       check:    () => this.runCheck(),
       evaluate: () => this.runEvaluate(),
+      push:     () => this.runPush(),
     };
     actions[stage.id]?.();
   }
 
   get completedCount(): number {
     return this.stages().filter(s => s.status === 'success').length;
+  }
+
+  get totalStages(): number {
+    return this.stages().length;
   }
 
   get hasAnyOutput(): boolean {

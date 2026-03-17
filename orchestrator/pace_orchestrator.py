@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, END
 from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
 from agents.test_runner import run_tests
-from agents.devops_agent import commit_code
+from agents.devops_agent import commit_code, push_code
 
 
 class PACEState(TypedDict):
@@ -12,6 +12,7 @@ class PACEState(TypedDict):
     test_code: str
     test_result: dict
     commit_result: dict
+    push_result: dict
     errors: List[str]
 
 
@@ -60,7 +61,6 @@ def evaluate_node(state: PACEState) -> PACEState:
             commit_result = {
                 "status": "skipped",
                 "reason": "tests did not pass",
-                "test_output": state.get("test_result", {}).get("stdout", "")
             }
         return {**state, "commit_result": commit_result}
     except Exception as e:
@@ -68,21 +68,39 @@ def evaluate_node(state: PACEState) -> PACEState:
                 "commit_result": {"status": "error", "reason": str(e)}}
 
 
+def push_node(state: PACEState) -> PACEState:
+    """PUSH: Push committed code to GitHub if commit succeeded."""
+    try:
+        commit_status = state.get("commit_result", {}).get("status")
+        if commit_status != "committed":
+            return {**state, "push_result": {
+                "status": "skipped",
+                "reason": f"commit was '{commit_status}', nothing to push"
+            }}
+        push_result = push_code()
+        return {**state, "push_result": push_result}
+    except Exception as e:
+        return {**state, "errors": state["errors"] + [f"PUSH: {e}"],
+                "push_result": {"status": "error", "reason": str(e)}}
+
+
 # ── Graph ─────────────────────────────────────────────────────────────────────
 
 def build_graph():
     graph = StateGraph(PACEState)
 
-    graph.add_node("plan", plan_node)
-    graph.add_node("build", build_node)
-    graph.add_node("check", check_node)
+    graph.add_node("plan",     plan_node)
+    graph.add_node("build",    build_node)
+    graph.add_node("check",    check_node)
     graph.add_node("evaluate", evaluate_node)
+    graph.add_node("push",     push_node)
 
     graph.set_entry_point("plan")
-    graph.add_edge("plan", "build")
-    graph.add_edge("build", "check")
-    graph.add_edge("check", "evaluate")
-    graph.add_edge("evaluate", END)
+    graph.add_edge("plan",     "build")
+    graph.add_edge("build",    "check")
+    graph.add_edge("check",    "evaluate")
+    graph.add_edge("evaluate", "push")
+    graph.add_edge("push",     END)
 
     return graph.compile()
 
@@ -97,6 +115,7 @@ def run_pace():
         "test_code": "",
         "test_result": {},
         "commit_result": {},
+        "push_result": {},
         "errors": []
     }
 
@@ -107,5 +126,6 @@ def run_pace():
         "act":      final_state["generated_code"],
         "check":    final_state["test_result"],
         "evaluate": final_state["commit_result"],
+        "push":     final_state["push_result"],
         "errors":   final_state["errors"]
     }

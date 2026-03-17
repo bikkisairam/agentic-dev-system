@@ -28,6 +28,10 @@ export class ApiService {
     return this.http.post(`${BASE}/commit`, {});
   }
 
+  push(): Observable<any> {
+    return this.http.post(`${BASE}/push`, {});
+  }
+
   runPace(): Observable<any> {
     return this.http.post(`${BASE}/run`, {});
   }

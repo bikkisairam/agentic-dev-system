@@ -28,9 +28,9 @@
     <div class="sidebar-footer">
       <div class="progress-label">Pipeline Progress</div>
       <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="(completedCount / 4) * 100"></div>
+        <div class="progress-fill" [style.width.%]="(completedCount / totalStages) * 100"></div>
       </div>
-      <div class="progress-count">{{ completedCount }}/4 stages</div>
+      <div class="progress-count">{{ completedCount }}/{{ totalStages }} stages</div>
     </div>
   </aside>
 
@@ -181,6 +181,37 @@
               <div class="commit-info">
                 <div class="commit-status skipped">{{ stageOf('evaluate').output?.status | titlecase }}</div>
                 <div class="commit-message">{{ stageOf('evaluate').output?.reason }}</div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- PUSH result -->
+    @if (stageOf('push').output) {
+      <div class="result-block">
+        <div class="result-header" [attr.data-status]="stageOf('push').status">
+          <span>📤 Push — GitHub</span>
+          <span class="result-meta">{{ stageOf('push').output?.url }}</span>
+        </div>
+        <div class="result-body">
+          <div class="commit-card">
+            @if (stageOf('push').output?.status === 'pushed') {
+              <div class="commit-icon">✅</div>
+              <div class="commit-info">
+                <div class="commit-status">Pushed to GitHub</div>
+                <div class="commit-message">
+                  Branch: {{ stageOf('push').output?.branch }} &nbsp;·&nbsp;
+                  Remote: {{ stageOf('push').output?.remote }}
+                </div>
+                <div class="commit-message">{{ stageOf('push').output?.url }}</div>
+              </div>
+            } @else {
+              <div class="commit-icon">⏭️</div>
+              <div class="commit-info">
+                <div class="commit-status skipped">{{ stageOf('push').output?.status | titlecase }}</div>
+                <div class="commit-message">{{ stageOf('push').output?.reason }}</div>
               </div>
             }
           </div>

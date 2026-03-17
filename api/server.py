@@ -4,7 +4,7 @@ from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
 from agents.test_agent import generate_tests
 from agents.test_runner import run_tests
-from agents.devops_agent import commit_code
+from agents.devops_agent import commit_code, push_code
 from orchestrator.pace_orchestrator import run_pace
 
 app = FastAPI(title="Agentic Dev System")
@@ -54,6 +54,15 @@ def test():
 def commit():
     try:
         result = commit_code()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/push")
+def push():
+    try:
+        result = push_code()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
