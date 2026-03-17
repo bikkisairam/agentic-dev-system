@@ -2,16 +2,16 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0f1117;
-  --surface:   #1a1d27;
-  --surface2:  #22263a;
-  --border:    #2e3352;
-  --accent:    #6c63ff;
-  --accent2:   #a78bfa;
-  --success:   #22c55e;
-  --error:     #ef4444;
-  --text:      #e2e8f0;
-  --muted:     #64748b;
+  --bg:        #f1f5f9;
+  --surface:   #ffffff;
+  --surface2:  #f8fafc;
+  --border:    #e2e8f0;
+  --accent:    #4f46e5;
+  --accent2:   #7c3aed;
+  --success:   #16a34a;
+  --error:     #dc2626;
+  --text:      #1e293b;
+  --muted:     #94a3b8;
   --radius:    10px;
   --font:      'Segoe UI', system-ui, sans-serif;
 }
@@ -258,7 +258,7 @@ pre {
 .spinner {
   display: inline-block;
   width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255,255,255,0.4);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;

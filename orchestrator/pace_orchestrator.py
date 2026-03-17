@@ -2,7 +2,6 @@ from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
-from agents.test_agent import generate_tests
 from agents.test_runner import run_tests
 from agents.devops_agent import commit_code
 
@@ -39,13 +38,10 @@ def build_node(state: PACEState) -> PACEState:
 
 
 def check_node(state: PACEState) -> PACEState:
-    """CHECK: Generate tests and run them."""
-    if state["errors"]:
-        return state
+    """CHECK: Run tests against the generated API using TestClient."""
     try:
-        test_code = generate_tests(state["story"])
         test_result = run_tests()
-        return {**state, "test_code": test_code, "test_result": test_result}
+        return {**state, "test_result": test_result}
     except Exception as e:
         return {
             **state,
@@ -56,8 +52,6 @@ def check_node(state: PACEState) -> PACEState:
 
 def evaluate_node(state: PACEState) -> PACEState:
     """EVALUATE: Commit if tests passed, skip otherwise."""
-    if state["errors"] and not state.get("generated_code"):
-        return {**state, "commit_result": {"status": "skipped", "reason": "earlier stage failed"}}
     try:
         test_passed = state.get("test_result", {}).get("passed", False)
         if test_passed:

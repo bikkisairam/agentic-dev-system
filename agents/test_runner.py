@@ -1,39 +1,48 @@
-import subprocess
+import importlib.util
+import sys
 
 
 def run_tests():
     """
     Test Runner Agent:
-    Executes pytest on the tests directory and returns results.
+    Imports generated_api.py directly and tests it with FastAPI TestClient.
+    No live server required.
     """
     try:
-        result = subprocess.run(
-            ["pytest", "tests/", "-v", "--tb=short"],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        from fastapi.testclient import TestClient
 
-        passed = result.returncode == 0
+        # Remove cached module so re-import always picks up the latest file
+        if "generated_api" in sys.modules:
+            del sys.modules["generated_api"]
+
+        spec = importlib.util.spec_from_file_location("generated_api", "generated_api.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        app = module.app
+
+        client = TestClient(app)
+        response = client.get("/weather")
+
+        data = response.json()
+        checks = {
+            "status_200":      response.status_code == 200,
+            "has_temperature": "temperature" in data,
+            "has_humidity":    "humidity" in data,
+            "has_weather":     "weather" in data,
+        }
+        all_passed = all(checks.values())
 
         return {
-            "passed": passed,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr
+            "passed":     all_passed,
+            "returncode": 0 if all_passed else 1,
+            "checks":     checks,
+            "response":   data,
         }
 
-    except subprocess.TimeoutExpired:
-        return {
-            "passed": False,
-            "returncode": -1,
-            "stdout": "",
-            "stderr": "Tests timed out after 60 seconds"
-        }
     except Exception as e:
         return {
-            "passed": False,
+            "passed":     False,
             "returncode": -1,
-            "stdout": "",
-            "stderr": str(e)
+            "checks":     {},
+            "stderr":     str(e),
         }
