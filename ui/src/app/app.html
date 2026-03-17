@@ -1,0 +1,116 @@
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon">⚙️</span>
+      <span class="logo-text">AgentDev</span>
+    </div>
+
+    <div class="server-badge" [class.online]="serverOnline() === true" [class.offline]="serverOnline() === false">
+      <span class="dot"></span>
+      {{ serverOnline() === true ? 'API Online' : serverOnline() === false ? 'API Offline' : 'Checking...' }}
+    </div>
+
+    <nav class="nav">
+      @for (stage of stages(); track stage.id) {
+        <button class="nav-item" [class.active]="selectedStage()?.id === stage.id"
+                [class.success]="stage.status === 'success'"
+                [class.error]="stage.status === 'error'"
+                [class.running]="stage.status === 'running'"
+                (click)="selectStage(stage)">
+          <span class="nav-icon">{{ stage.icon }}</span>
+          <span class="nav-label">{{ stage.label }}</span>
+          <span class="status-dot" [attr.data-status]="stage.status"></span>
+        </button>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="progress-label">Pipeline Progress</div>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="(completedCount / 4) * 100"></div>
+      </div>
+      <div class="progress-count">{{ completedCount }}/4 stages</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>PACE Pipeline</h1>
+        <p>Plan · Act · Check · Evaluate</p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-secondary" (click)="resetStages()" [disabled]="pipelineRunning()">
+          Reset
+        </button>
+        <button class="btn-primary" (click)="runFullPipeline()" [disabled]="pipelineRunning()">
+          @if (pipelineRunning()) {
+            <span class="spinner"></span> Running...
+          } @else {
+            ▶ Run Full Pipeline
+          }
+        </button>
+      </div>
+    </header>
+
+    <!-- Pipeline Flow -->
+    <section class="pipeline-section">
+      @for (stage of stages(); track stage.id; let last = $last) {
+        <div class="pipeline-card" [attr.data-status]="stage.status"
+             (click)="selectStage(stage)">
+          <div class="card-header">
+            <span class="card-icon">{{ stage.icon }}</span>
+            <span class="card-label">{{ stage.label }}</span>
+            <span class="card-status-icon">
+              @switch (stage.status) {
+                @case ('success') { ✅ }
+                @case ('error')   { ❌ }
+                @case ('running') { <span class="spinner-sm"></span> }
+                @default          { ○ }
+              }
+            </span>
+          </div>
+          <div class="card-body">
+            @if (stage.status === 'idle') {
+              <span class="muted">Not started</span>
+            } @else if (stage.status === 'running') {
+              <span class="muted">Processing...</span>
+            } @else if (stage.output) {
+              <pre class="output-preview">{{ formatOutput(stage.output) | slice:0:120 }}{{ formatOutput(stage.output).length > 120 ? '...' : '' }}</pre>
+            }
+          </div>
+          <button class="card-run-btn" (click)="$event.stopPropagation(); triggerStage(stage)"
+                  [disabled]="stage.status === 'running' || pipelineRunning()">
+            Run
+          </button>
+        </div>
+        @if (!last) {
+          <div class="arrow">→</div>
+        }
+      }
+    </section>
+
+    <!-- Detail Panel -->
+    @if (selectedStage()) {
+      <section class="detail-panel">
+        <div class="detail-header">
+          <span>{{ selectedStage()!.icon }} {{ selectedStage()!.label }} — Output</span>
+          <button class="close-btn" (click)="selectedStage.set(null)">✕</button>
+        </div>
+        <div class="detail-body">
+          @if (selectedStage()!.output) {
+            <pre class="output-full">{{ formatOutput(selectedStage()!.output) }}</pre>
+          } @else {
+            <p class="muted">No output yet. Run this stage to see results.</p>
+          }
+        </div>
+      </section>
+    }
+
+  </main>
+</div>

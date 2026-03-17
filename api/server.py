@@ -1,24 +1,75 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
+from agents.test_agent import generate_tests
+from agents.test_runner import run_tests
 from agents.devops_agent import commit_code
 from orchestrator.pace_orchestrator import run_pace
-app = FastAPI()
+
+app = FastAPI(title="Agentic Dev System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/")
 def home():
-    return {"message": "Working"}
+    return {"message": "Agentic Dev System is running"}
 
-@app.get("/build")
+
+@app.get("/jira-story")
+def jira_story():
+    try:
+        story = get_user_story()
+        return {"story": story}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/build")
 def build():
-    story = get_user_story()
-    build_code(story)
-    return {"status": "API generated"}
-@app.get("/commit")
+    try:
+        story = get_user_story()
+        code = build_code(story)
+        return {"status": "code generated", "preview": code[:500]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/test")
+def test():
+    try:
+        story = get_user_story()
+        test_code = generate_tests(story)
+        result = run_tests()
+        return {
+            "status": "tests ran",
+            "passed": result["passed"],
+            "test_preview": test_code[:300],
+            "output": result["stdout"][:1000]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/commit")
 def commit():
-    result = commit_code()
-    return result
-@app.get("/run")
+    try:
+        result = commit_code()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/run")
 def run():
-    result = run_pace()
-    return result
+    try:
+        result = run_pace()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
