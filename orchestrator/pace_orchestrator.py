@@ -106,7 +106,7 @@ def build_graph():
 
 
 def run_pace():
-    """Run the full PACE workflow using LangGraph."""
+    """Run the full PACE workflow using LangGraph (blocking)."""
     graph = build_graph()
 
     initial_state: PACEState = {
@@ -129,3 +129,62 @@ def run_pace():
         "push":     final_state["push_result"],
         "errors":   final_state["errors"]
     }
+
+
+def stream_pace():
+    """Stream the PACE workflow node-by-node using LangGraph .stream()."""
+    graph = build_graph()
+
+    initial_state: PACEState = {
+        "story": {},
+        "generated_code": "",
+        "test_code": "",
+        "test_result": {},
+        "commit_result": {},
+        "push_result": {},
+        "errors": []
+    }
+
+    for chunk in graph.stream(initial_state):
+        node_name = list(chunk.keys())[0]
+        state = chunk[node_name]
+
+        if node_name == "plan":
+            ok = bool(state.get("story"))
+            yield {
+                "stage":  "plan",
+                "status": "success" if ok else "error",
+                "output": state.get("story") or state.get("errors", [])
+            }
+
+        elif node_name == "build":
+            ok = bool(state.get("generated_code"))
+            yield {
+                "stage":  "build",
+                "status": "success" if ok else "error",
+                "output": state.get("generated_code") or state.get("errors", [])
+            }
+
+        elif node_name == "check":
+            result = state.get("test_result", {})
+            yield {
+                "stage":  "check",
+                "status": "success" if result.get("passed") else "error",
+                "output": result
+            }
+
+        elif node_name == "evaluate":
+            result = state.get("commit_result", {})
+            yield {
+                "stage":  "evaluate",
+                "status": "success" if result.get("status") == "committed" else "error",
+                "output": result
+            }
+
+        elif node_name == "push":
+            result = state.get("push_result", {})
+            yield {
+                "stage":  "push",
+                "status": "success" if result.get("status") == "pushed" else "error",
+                "output": result
+            }

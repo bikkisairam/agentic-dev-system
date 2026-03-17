@@ -55,24 +55,40 @@ export class App {
   runFullPipeline() {
     this.resetStages();
     this.pipelineRunning.set(true);
-    this.stages.update(stages => stages.map(s => ({ ...s, status: 'running' })));
 
-    this.api.runPace().subscribe({
-      next: (res) => {
+    const stageOrder = ['plan', 'build', 'check', 'evaluate', 'push'];
+
+    // Set first stage to running immediately
+    this.setStageStatus('plan', 'running');
+
+    const es = new EventSource('http://localhost:8005/stream');
+
+    es.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.done) {
+        es.close();
         this.pipelineRunning.set(false);
-        this.setStageStatus('plan',     'success', res.plan);
-        this.setStageStatus('build',    'success', res.act);
-        this.setStageStatus('check',    res.check?.passed ? 'success' : 'error', res.check);
-        this.setStageStatus('evaluate', res.evaluate?.status === 'committed' ? 'success' : 'error', res.evaluate);
-        this.setStageStatus('push',     res.push?.status === 'pushed' ? 'success' : 'error', res.push);
-      },
-      error: (err) => {
-        this.pipelineRunning.set(false);
-        this.stages.update(stages => stages.map(s =>
-          s.status === 'running' ? { ...s, status: 'error', output: err.error } : s
-        ));
+        return;
       }
-    });
+
+      // Mark current stage complete
+      this.setStageStatus(data.stage, data.status, data.output);
+
+      // Set next stage to running
+      const nextIndex = stageOrder.indexOf(data.stage) + 1;
+      if (nextIndex < stageOrder.length) {
+        this.setStageStatus(stageOrder[nextIndex], 'running');
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      this.pipelineRunning.set(false);
+      this.stages.update(stages =>
+        stages.map(s => s.status === 'running' ? { ...s, status: 'error' } : s)
+      );
+    };
   }
 
   runPlan() {

@@ -1,11 +1,12 @@
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from jira.jira_reader import get_user_story
 from agents.builder_agent import build_code
-from agents.test_agent import generate_tests
 from agents.test_runner import run_tests
 from agents.devops_agent import commit_code, push_code
-from orchestrator.pace_orchestrator import run_pace
+from orchestrator.pace_orchestrator import run_pace, stream_pace
 
 app = FastAPI(title="Agentic Dev System")
 
@@ -75,3 +76,24 @@ def run():
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stream")
+def stream():
+    def event_generator():
+        try:
+            for event in stream_pace():
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'stage': 'error', 'status': 'error', 'output': str(e)})}\n\n"
+        finally:
+            yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
