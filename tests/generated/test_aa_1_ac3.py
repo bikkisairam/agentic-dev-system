@@ -1,10 +1,10 @@
-Here is a pytest test file that tests the /health endpoint's status and returns OK:
-
-import fastapi
+import pytest
+from fastapi.testclient import TestClient
 from generated.aa_1.app import app
 
+
 def test_ac3():
-    with client:
-        response = client.get("/health")
-        assert response.status == 200
-        assert response.json() == {"Status": "To Do"}
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "To Do"}

@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PACE — Agentic Dev System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9fafb;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --border-strong: #d1d5db;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --text-subtle: #9ca3af;
+      --primary: #000000;
+      --primary-fg: #ffffff;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.03);
+      --sidebar-w: 280px;
+      --nav-h: 56px;
+
+      --running-prime: #3b82f6;
+      --running-forge: #8b5cf6;
+      --running-gate: #10b981;
+      --running-sentinel: #f59e0b;
+      --running-conduit: #06b6d4;
+      --running-scribe: #ec4899;
+
+      --dot-todo: #9ca3af;
+      --dot-low: #6ee7b7;
+      --dot-medium: #fbbf24;
+      --dot-high: #f87171;
+      --dot-critical: #ef4444;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Navbar ─────────────────────────────────────────────────── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-h);
+      background: rgba(255,255,255,.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+    }
+
+    .nav-logo {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-logo span.badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      background: var(--primary);
+      color: var(--primary-fg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .nav-spacer { flex: 1; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+
+    .status-pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dot-todo);
+      flex-shrink: 0;
+    }
+
+    .status-pill.online .dot { background: #10b981; }
+    .status-pill.offline .dot { background: #ef4444; }
+
+    .btn-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 16px;
+      transition: background .15s, border-color .15s;
+    }
+
+    .btn-icon:hover { background: var(--bg); border-color: var(--border-strong); color: var(--text); }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      flex: 1;
+    }
+
+    .ticket-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .ticket-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      border-left: 2.5px solid transparent;
+      transition: background .12s, border-color .12s;
+      margin-bottom: 2px;
+    }
+
+    .ticket-item:hover { background: var(--bg); }
+
+    .ticket-item.selected {
+      background: #f3f4f6;
+      border-left-color: var(--primary);
+    }
+
+    .priority-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .ticket-info { flex: 1; min-width: 0; }
+
+    .ticket-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: .3px;
+    }
+
+    .ticket-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .ticket-empty {
+      padding: 24px 12px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-subtle);
+    }
+
+    /* ── Folder / Space styles ───────────────────────────────────── */
+    .space-item {
+      margin-bottom: 2px;
+    }
+
+    .space-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      user-select: none;
+      transition: background .12s;
+    }
+
+    .space-header:hover { background: var(--bg); }
+
+    .space-chevron {
+      font-size: 10px;
+      color: var(--text-subtle);
+      transition: transform .15s;
+      flex-shrink: 0;
+      width: 10px;
+    }
+
+    .space-item.open .space-chevron { transform: rotate(90deg); }
+
+    .space-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .space-key {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: .3px;
+    }
+
+    .space-name {
+      font-size: 12px;
+      color: var(--text-muted);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .space-tickets {
+      display: none;
+      padding-left: 22px;
+      padding-bottom: 4px;
+    }
+
+    .space-item.open .space-tickets { display: block; }
+
+    .space-ticket-item {
+      display: flex;
+      align-items: baseline;
+      gap: 7px;
+      padding: 5px 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: background .12s, border-color .12s;
+      margin-bottom: 1px;
+    }
+
+    .space-ticket-item:hover { background: var(--bg); }
+
+    .space-ticket-item.selected {
+      background: #f3f4f6;
+      border-left-color: var(--primary);
+    }
+
+    .space-ticket-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      letter-spacing: .2px;
+    }
+
+    .space-ticket-name {
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .space-loading {
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--text-subtle);
+    }
+
+    /* ── Main ─────────────────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--text-subtle);
+      gap: 12px;
+    }
+
+    .empty-icon {
+      font-size: 40px;
+      opacity: .4;
+    }
+
+    .empty-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .empty-sub {
+      font-size: 13px;
+      max-width: 280px;
+      line-height: 1.5;
+    }
+
+    /* ── Pipeline header ─────────────────────────────────────────── */
+    .pipeline-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pipeline-title {
+      font-size: 18px;
+      font-weight: 700;
+      flex: 1;
+    }
+
+    .pipeline-ticket-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .15s, transform .08s;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-fg);
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover:not(:disabled) { opacity: .85; }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: var(--bg); }
+
+    /* ── Pipeline flow ───────────────────────────────────────────── */
+    .pipeline-flow {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    /* ── Stage cards (premium) ───────────────────────────────────── */
+    .stage-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 16px 14px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .18s, box-shadow .18s, border-color .18s;
+      cursor: default;
+    }
+
+    .stage-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Colored accent bar at top */
+    .stage-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+      transition: background .25s, height .2s;
+      border-radius: 14px 14px 0 0;
+    }
+
+    /* Subtle tinted background glow on running */
+    .stage-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, color-mix(in srgb, var(--stage-color, transparent) 8%, transparent) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+
+    .stage-card.running::after { opacity: 1; }
+
+    .stage-card.running::before {
+      background: linear-gradient(90deg, var(--stage-color), color-mix(in srgb, var(--stage-color) 55%, #fff));
+      height: 3px;
+    }
+
+    .stage-card.running {
+      border-color: color-mix(in srgb, var(--stage-color) 35%, var(--border));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--stage-color) 12%, transparent), var(--shadow-md);
+    }
+
+    .stage-card.done::before {
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .stage-card.error::before { background: #ef4444; }
+
+    /* Parallel group: subtle shared highlight */
+    .stage-card[data-parallel="true"] {
+      border-style: dashed;
+    }
+
+    /* Icon area */
+    .stage-icon-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 12px;
+      transition: background .2s, border-color .2s;
+    }
+
+    .stage-card.running .stage-icon-wrap {
+      background: color-mix(in srgb, var(--stage-color) 10%, white);
+      border-color: color-mix(in srgb, var(--stage-color) 30%, var(--border));
+    }
+
+    .stage-card.done .stage-icon-wrap {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
+
+    .stage-name {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--text);
+    }
+
+    .stage-role {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    .stage-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 12px 0 10px;
+    }
+
+    .stage-status-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .stage-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dot-todo);
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+
+    .stage-dot.running {
+      background: var(--stage-color, var(--primary));
+      animation: pulse 1.1s ease-in-out infinite;
+    }
+    .stage-dot.done { background: #10b981; }
+    .stage-dot.error { background: #ef4444; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.85); }
+    }
+
+    .stage-status-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .stage-result-pill {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: .2px;
+    }
+
+    .stage-result-pill.pill-done { background: #ede9fe; color: #5b21b6; }
+    .stage-result-pill.pill-error { background: #fee2e2; color: #7f1d1d; }
+
+    /* ── Parallel group label ─────────────────────────────────────── */
+    .pipeline-section-label {
+      grid-column: span 3;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--text-subtle);
+      text-align: center;
+      padding-bottom: 2px;
+    }
+
+    /* ── Results section ─────────────────────────────────────────── */
+    .results-section { display: flex; flex-direction: column; gap: 12px; }
+
+    .results-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      border-top: 3px solid var(--stage-color, var(--primary));
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .result-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .result-card-header:hover { background: var(--bg); }
+
+    .result-card-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .result-card-chevron {
+      color: var(--text-muted);
+      font-size: 14px;
+      transition: transform .2s;
+    }
+
+    .result-card.open .result-card-chevron { transform: rotate(180deg); }
+
+    .result-card-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .result-card.open .result-card-body { display: block; }
+
+    .result-pre {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding-top: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ── Result card body content ────────────────────────────────── */
+    .out-section {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .out-section:last-child { border-bottom: none; }
+
+    .out-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .out-loading { font-weight: 400; color: var(--text-subtle); text-transform: none; letter-spacing: 0; }
+
+    .out-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .out-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 70px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .out-ac-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .out-ac-row:last-child { border-bottom: none; }
+
+    .out-ac-id {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 36px;
+    }
+
+    .out-ac-desc { color: var(--text); flex: 1; }
+
+    .out-verdict {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .v-pass { background: #d1fae5; color: #065f46; }
+    .v-warn { background: #fef3c7; color: #92400e; }
+    .v-fail { background: #fee2e2; color: #7f1d1d; }
+
+    .out-finding {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .out-finding:last-child { border-bottom: none; }
+
+    .out-sev {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .sev-high   { background: #fee2e2; color: #7f1d1d; }
+    .sev-medium { background: #fef3c7; color: #92400e; }
+    .sev-low    { background: #e0e7ff; color: #3730a3; }
+
+    .out-ftype { font-weight: 600; color: var(--text); min-width: 120px; }
+    .out-fdetail { color: var(--text-muted); flex: 1; }
+
+    .out-error {
+      padding: 12px;
+      background: #fef2f2;
+      border-radius: 8px;
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    /* Generated files */
+    .out-file { margin-bottom: 12px; }
+
+    .out-file-name {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px 6px 0 0;
+      padding: 6px 10px;
+    }
+
+    .out-file-code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      background: #0f1117;
+      color: #e5e7eb;
+      border-radius: 0 0 6px 6px;
+      padding: 12px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre;
+      margin: 0;
+    }
+
+    /* ── Settings modal ──────────────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-lg);
+      width: 480px;
+      max-width: 96vw;
+      padding: 28px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .modal-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .provider-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .provider-btn {
+      padding: 10px 6px;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: border-color .15s, color .15s, background .15s;
+      font-family: inherit;
+    }
+
+    .provider-btn:hover { border-color: var(--border-strong); color: var(--text); }
+    .provider-btn.selected { border-color: var(--primary); color: var(--text); background: #f9fafb; font-weight: 600; }
+
+    .input-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none;
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color .15s;
+    }
+
+    .input-field:focus { border-color: var(--text); }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .save-feedback {
+      font-size: 12px;
+      color: #10b981;
+      align-self: center;
+      flex: 1;
+      display: none;
+    }
+
+    /* ── Spinner ──────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Scrollbar ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="nav">
+    <div class="nav-logo">
+      PACE <span class="badge">Dev</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div id="statusPill" class="status-pill">
+      <span class="dot"></span>
+      <span id="statusText">Checking…</span>
+    </div>
+    <button class="btn-icon" title="Settings" onclick="openSettings()">⚙</button>
+  </nav>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Spaces</span>
+        <button class="btn-icon" title="Refresh" onclick="loadSpaces()" style="width:26px;height:26px;font-size:13px;">↻</button>
+      </div>
+      <div class="ticket-list" id="spaceList">
+        <div class="ticket-empty">Loading spaces…</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main" id="main">
+      <!-- Empty state (shown when no ticket selected) -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🚀</div>
+        <div class="empty-title">No ticket selected</div>
+        <div class="empty-sub">Pick a Jira ticket from the sidebar to view and run the PACE pipeline.</div>
+      </div>
+
+      <!-- Pipeline panel (hidden until ticket selected) -->
+      <div id="pipelinePanel" style="display:none; display:flex; flex-direction:column; gap:24px;">
+
+        <!-- Pipeline header -->
+        <div class="pipeline-header">
+          <div>
+            <div class="pipeline-title">Pipeline</div>
+            <div class="pipeline-ticket-id" id="pipelineTicketId">—</div>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-secondary" id="btnReset" onclick="resetPipeline()">↺ Reset</button>
+          <button class="btn btn-primary" id="btnRun" onclick="runPipeline()">▶ Run Pipeline</button>
+        </div>
+
+        <!-- Stage flow -->
+        <div class="pipeline-flow" id="pipelineFlow">
+          <!-- injected by JS -->
+        </div>
+
+        <!-- Results -->
+        <div class="results-section" id="resultsSection" style="display:none;">
+          <div class="results-title">Output</div>
+          <div id="resultCards"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+      <div class="modal-title">⚙ LLM Settings</div>
+      <div class="modal-section-label">Provider</div>
+      <div class="provider-grid" id="providerGrid">
+        <button class="provider-btn" data-p="claude" onclick="selectProvider('claude')">Claude</button>
+        <button class="provider-btn" data-p="openai" onclick="selectProvider('openai')">OpenAI</button>
+        <button class="provider-btn" data-p="groq" onclick="selectProvider('groq')">Groq</button>
+        <button class="provider-btn" data-p="ollama" onclick="selectProvider('ollama')">Ollama</button>
+      </div>
+      <label class="input-label" for="apiKeyInput">API Key <span id="apiKeyOptional" style="opacity:.5">(optional for Ollama)</span></label>
+      <input class="input-field" id="apiKeyInput" type="password" placeholder="sk-…" autocomplete="off" />
+      <div class="modal-footer">
+        <span class="save-feedback" id="saveFeedback">✓ Saved</span>
+        <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ── State ─────────────────────────────────────────────────────────────────
+  let selectedTicket = null;
+  let activeSource = null;
+  let stageStates = {}; // stageName → { status, output }
+  let selectedProvider = 'claude';
+
+  const STAGE_DEFS = [
+    { id: 'prime',    emoji: '📋', name: 'PRIME',    role: 'Analyst',    color: 'var(--running-prime)',    seq: true },
+    { id: 'forge',    emoji: '⚒️',  name: 'FORGE',    role: 'Engineer',   color: 'var(--running-forge)',    seq: true },
+    // parallel group
+    { id: 'gate',     emoji: '🧪', name: 'GATE',     role: 'QA',         color: 'var(--running-gate)',     seq: false },
+    { id: 'sentinel', emoji: '🛡️', name: 'SENTINEL', role: 'Security',   color: 'var(--running-sentinel)', seq: false },
+    { id: 'conduit',  emoji: '🔁', name: 'CONDUIT',  role: 'Integrator', color: 'var(--running-conduit)',  seq: false },
+    // end parallel
+    { id: 'scribe',   emoji: '📝', name: 'SCRIBE',   role: 'Documenter', color: 'var(--running-scribe)',   seq: true },
+  ];
+
+  const PARALLEL_IDS = new Set(['gate', 'sentinel', 'conduit']);
+
+  // ── Server health ──────────────────────────────────────────────────────────
+  async function checkHealth() {
+    const pill = document.getElementById('statusPill');
+    const txt  = document.getElementById('statusText');
+    try {
+      const r = await fetch('/');
+      if (r.ok) {
+        pill.className = 'status-pill online';
+        txt.textContent = 'Online';
+      } else {
+        throw new Error();
+      }
+    } catch {
+      pill.className = 'status-pill offline';
+      txt.textContent = 'Offline';
+    }
+  }
+
+  // ── Spaces & Tickets ───────────────────────────────────────────────────────
+  const projectTicketsCache = {}; // key → tickets array
+
+  async function loadSpaces() {
+    const list = document.getElementById('spaceList');
+    list.innerHTML = '<div class="ticket-empty">Loading…</div>';
+    try {
+      const r = await fetch('/jira/projects');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { projects } = await r.json();
+      renderSpaces(projects);
+    } catch (e) {
+      list.innerHTML = `<div class="ticket-empty" style="color:#ef4444">Failed to load<br><small>${e.message}</small></div>`;
+    }
+  }
+
+  function renderSpaces(projects) {
+    const list = document.getElementById('spaceList');
+    if (!projects || projects.length === 0) {
+      list.innerHTML = '<div class="ticket-empty">No spaces found</div>';
+      return;
+    }
+    list.innerHTML = '';
+    projects.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'space-item';
+      item.dataset.key = p.key;
+
+      item.innerHTML = `
+        <div class="space-header" onclick="toggleSpace('${esc(p.key)}')">
+          <span class="space-chevron">▶</span>
+          <span class="space-icon">📁</span>
+          <span class="space-key">${esc(p.key)}</span>
+          <span class="space-name">${esc(p.name)}</span>
+        </div>
+        <div class="space-tickets" id="tickets-${esc(p.key)}">
+          <div class="space-loading">Loading…</div>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  async function toggleSpace(key) {
+    const item = document.querySelector(`.space-item[data-key="${key}"]`);
+    if (!item) return;
+    const isOpen = item.classList.contains('open');
+    if (isOpen) {
+      item.classList.remove('open');
+      return;
+    }
+    item.classList.add('open');
+    // Load tickets if not cached
+    if (!projectTicketsCache[key]) {
+      await loadProjectTickets(key);
+    }
+  }
+
+  async function loadProjectTickets(key) {
+    const container = document.getElementById(`tickets-${key}`);
+    if (!container) return;
+    container.innerHTML = '<div class="space-loading">Loading…</div>';
+    try {
+      const r = await fetch(`/jira/tickets?project=${encodeURIComponent(key)}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const { tickets } = await r.json();
+      projectTicketsCache[key] = tickets;
+      renderProjectTickets(key, tickets);
+    } catch (e) {
+      container.innerHTML = `<div class="space-loading" style="color:#ef4444">Failed: ${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderProjectTickets(key, tickets) {
+    const container = document.getElementById(`tickets-${key}`);
+    if (!container) return;
+    if (!tickets || tickets.length === 0) {
+      container.innerHTML = '<div class="space-loading">No tickets</div>';
+      return;
+    }
+    container.innerHTML = '';
+    tickets.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'space-ticket-item' + (selectedTicket && selectedTicket.id === t.id ? ' selected' : '');
+      el.dataset.id = t.id;
+      el.innerHTML = `
+        <span class="space-ticket-id">${esc(t.id)}</span>
+        <span class="space-ticket-name">${esc(t.title || '(no title)')}</span>
+      `;
+      el.addEventListener('click', () => selectTicket(t));
+      container.appendChild(el);
+    });
+  }
+
+  function selectTicket(t) {
+    selectedTicket = t;
+    // Update sidebar highlight
+    document.querySelectorAll('.space-ticket-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.id === t.id);
+    });
+    showPipelinePanel();
+  }
+
+  // ── Pipeline panel ─────────────────────────────────────────────────────────
+  function showPipelinePanel() {
+    document.getElementById('emptyState').style.display = 'none';
+    const panel = document.getElementById('pipelinePanel');
+    panel.style.display = 'flex';
+    document.getElementById('pipelineTicketId').textContent = selectedTicket.id;
+    resetPipeline();
+  }
+
+  function resetPipeline() {
+    if (activeSource) { activeSource.close(); activeSource = null; }
+    stageStates = {};
+    STAGE_DEFS.forEach(s => stageStates[s.id] = { status: 'idle', output: '' });
+    renderPipelineFlow();
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('resultCards').innerHTML = '';
+    document.getElementById('btnRun').disabled = false;
+    document.getElementById('btnReset').disabled = false;
+  }
+
+  function renderPipelineFlow() {
+    const flow = document.getElementById('pipelineFlow');
+    flow.innerHTML = '';
+    STAGE_DEFS.forEach(s => flow.appendChild(makeStageCard(s)));
+  }
+
+  function makeStageCard(s) {
+    const state = stageStates[s.id] || { status: 'idle' };
+    const card = document.createElement('div');
+    card.className = `stage-card ${state.status}`;
+    card.id = `stage-${s.id}`;
+    card.style.setProperty('--stage-color', s.color);
+    if (!s.seq) card.dataset.parallel = 'true';
+
+    card.innerHTML = buildStageCardInner(s, state.status);
+    return card;
+  }
+
+  function buildStageCardInner(s, status) {
+    const statusLabel = { idle: 'Idle', running: 'Running…', done: 'Done', error: 'Error' }[status] || 'Idle';
+    let pill = '';
+    if (status === 'done')  pill = `<span class="stage-result-pill pill-done">Done</span>`;
+    if (status === 'error') pill = `<span class="stage-result-pill pill-error">Error</span>`;
+
+    return `
+      <div class="stage-icon-wrap">${s.emoji}</div>
+      <div class="stage-name">${s.name}</div>
+      <div class="stage-role">${s.role}</div>
+      <div class="stage-divider"></div>
+      <div class="stage-status-row">
+        <span class="stage-dot ${status}" style="--stage-color:${s.color}"></span>
+        <span class="stage-status-text">${statusLabel}</span>
+        ${pill}
+      </div>
+    `;
+  }
+
+  function updateStageCard(id, status) {
+    const def = STAGE_DEFS.find(s => s.id === id);
+    if (!def) return;
+    const card = document.getElementById(`stage-${id}`);
+    if (!card) return;
+    card.className = `stage-card ${status}`;
+    card.style.setProperty('--stage-color', def.color);
+    card.innerHTML = buildStageCardInner(def, status);
+  }
+
+  // ── Run pipeline ───────────────────────────────────────────────────────────
+  function runPipeline() {
+    if (!selectedTicket) return;
+    if (activeSource) { activeSource.close(); }
+
+    document.getElementById('btnRun').disabled = true;
+    document.getElementById('resultsSection').style.display = 'flex';
+    document.getElementById('resultsSection').style.flexDirection = 'column';
+
+    const url = `/pace/stream?ticket_id=${encodeURIComponent(selectedTicket.id)}`;
+    const src = new EventSource(url);
+    activeSource = src;
+
+    src.onmessage = (evt) => {
+      let data;
+      try { data = JSON.parse(evt.data); } catch { return; }
+
+      if (data.done) {
+        src.close();
+        activeSource = null;
+        document.getElementById('btnRun').disabled = false;
+        return;
+      }
+
+      const stage = (data.stage || '').toLowerCase();
+      const status = data.status || 'running';
+      const output = data.output || '';
+
+      // normalise: orchestrator may send "success" or "done"
+      const normStatus = (status === 'success') ? 'done' : status;
+
+      if (stage && stage !== 'error') {
+        stageStates[stage] = { status: normStatus, output };
+        updateStageCard(stage, normStatus);
+
+        if ((normStatus === 'done' || normStatus === 'error') && output) {
+          appendResultCard(stage, normStatus, output);
+        }
+      }
+    };
+
+    src.onerror = () => {
+      src.close();
+      activeSource = null;
+      document.getElementById('btnRun').disabled = false;
+    };
+  }
+
+  function appendResultCard(stageId, status, output) {
+    const def = STAGE_DEFS.find(s => s.id === stageId);
+    if (!def) return;
+    const container = document.getElementById('resultCards');
+
+    const existing = container.querySelector(`[data-stage="${stageId}"]`);
+    if (existing) existing.remove();
+
+    const card = document.createElement('div');
+    card.className = 'result-card open';
+    card.dataset.stage = stageId;
+    card.style.setProperty('--stage-color', def.color);
+
+    const pill = status === 'done'
+      ? `<span class="result-pill done">Done</span>`
+      : `<span class="result-pill fail">Error</span>`;
+
+    const bodyHtml = formatStageOutput(stageId, status, output);
+
+    card.innerHTML = `
+      <div class="result-card-header" onclick="toggleResultCard(this)">
+        <span style="font-size:16px">${def.emoji}</span>
+        <div class="result-card-title">${def.name} — ${def.role}</div>
+        ${pill}
+        <span class="result-card-chevron">▾</span>
+      </div>
+      <div class="result-card-body">${bodyHtml}</div>
+    `;
+    container.appendChild(card);
+
+    // FORGE: load generated files async
+    if (stageId === 'forge' && selectedTicket) {
+      loadGeneratedFiles(card, selectedTicket.id);
+    }
+  }
+
+  function toggleResultCard(header) {
+    header.closest('.result-card').classList.toggle('open');
+  }
+
+  // ── Stage output formatters ────────────────────────────────────────────────
+
+  function formatStageOutput(stageId, status, output) {
+    if (!output || typeof output !== 'object') {
+      return `<pre class="result-pre">${esc(String(output || ''))}</pre>`;
+    }
+    if (output.error && output.__failed__) {
+      return `<div class="out-error">❌ ${esc(output.error)}</div>`;
+    }
+
+    switch (stageId) {
+      case 'prime':    return fmtPrime(output);
+      case 'forge':    return fmtForge(output);
+      case 'gate':     return fmtGate(output);
+      case 'sentinel': return fmtSentinel(output);
+      case 'conduit':  return fmtConduit(output);
+      case 'scribe':   return fmtScribe(output);
+      default:         return `<pre class="result-pre">${esc(JSON.stringify(output, null, 2))}</pre>`;
+    }
+  }
+
+  function fmtPrime(o) {
+    const acs = (o.acceptance_criteria || []).map(ac => `
+      <div class="out-ac-row">
+        <span class="out-ac-id">${esc(ac.id)}</span>
+        <span class="out-ac-desc">${esc(ac.description)}</span>
+      </div>`).join('');
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Ticket</span><code>${esc(o.ticket_id || '')}</code></div>
+        <div class="out-row"><span class="out-label">Title</span><span>${esc(o.title || '')}</span></div>
+        <div class="out-row"><span class="out-label">Branch</span><code>${esc(o.branch_name || '')}</code></div>
+        <div class="out-row"><span class="out-label">Priority</span><span>${esc(o.priority || '')}</span></div>
+        <div class="out-row"><span class="out-label">Points</span><span>${o.story_points ? esc(String(o.story_points)) : '—'}</span></div>
+      </div>
+      ${acs ? `<div class="out-section"><div class="out-section-title">Acceptance Criteria</div>${acs}</div>` : ''}
+    `;
+  }
+
+  function fmtForge(o) {
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Branch</span><code>${esc(o.branch || '')}</code></div>
+        <div class="out-row"><span class="out-label">Commit</span><span>${esc(o.commit_message || '')}</span></div>
+        <div class="out-row"><span class="out-label">Push</span><span>${esc(o.push_status || '')}</span></div>
+      </div>
+      <div class="out-section" id="forge-files-section">
+        <div class="out-section-title">Generated Files <span class="out-loading" id="forge-files-loading">loading…</span></div>
+        <div id="forge-files-content"></div>
+      </div>
+    `;
+  }
+
+  function fmtGate(o) {
+    const verdicts = (o.ac_verdicts || []).map(v => `
+      <div class="out-ac-row">
+        <span class="out-verdict ${v.passed ? 'v-pass' : 'v-fail'}">${v.passed ? '✓ PASS' : '✗ FAIL'}</span>
+        <span class="out-ac-id">${esc(v.ac_id)}</span>
+        <span class="out-ac-desc">${esc(v.description || '')}</span>
+      </div>`).join('');
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Result</span>
+          <span class="out-verdict ${o.decision === 'SHIP' ? 'v-pass' : 'v-fail'}">${esc(o.decision || '')}</span>
+        </div>
+        <div class="out-row"><span class="out-label">Tests</span><span>${o.passed || 0} / ${o.total || 0} passed</span></div>
+      </div>
+      ${verdicts ? `<div class="out-section"><div class="out-section-title">AC Verdicts</div>${verdicts}</div>` : ''}
+    `;
+  }
+
+  function fmtSentinel(o) {
+    const findings = (o.findings || []).map(f => `
+      <div class="out-finding">
+        <span class="out-sev sev-${(f.severity||'').toLowerCase()}">${esc(f.severity)}</span>
+        <span class="out-ftype">${esc(f.type)}</span>
+        <span class="out-fdetail">${esc(f.detail)}</span>
+      </div>`).join('');
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Decision</span>
+          <span class="out-verdict ${o.decision === 'SHIP' ? 'v-pass' : o.decision === 'ADVISORY' ? 'v-warn' : 'v-fail'}">${esc(o.decision || '')}</span>
+        </div>
+        <div class="out-row"><span class="out-label">Summary</span><span>${esc(o.summary || '')}</span></div>
+      </div>
+      ${findings ? `<div class="out-section"><div class="out-section-title">Findings</div>${findings}</div>` : '<div class="out-section" style="color:var(--text-subtle);font-size:12px">No security findings.</div>'}
+    `;
+  }
+
+  function fmtConduit(o) {
+    const checks = (o.checks || []).map(c => `
+      <div class="out-ac-row">
+        <span class="out-verdict ${c.status==='PASS' ? 'v-pass' : c.status==='WARN' ? 'v-warn' : 'v-fail'}">${c.status}</span>
+        <span class="out-ac-id">${esc(c.name)}</span>
+        <span class="out-ac-desc">${esc(c.detail || '')}</span>
+      </div>`).join('');
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Decision</span>
+          <span class="out-verdict ${o.decision === 'SHIP' ? 'v-pass' : o.decision === 'ADVISORY' ? 'v-warn' : 'v-fail'}">${esc(o.decision || '')}</span>
+        </div>
+      </div>
+      ${checks ? `<div class="out-section"><div class="out-section-title">CI/CD Checks</div>${checks}</div>` : ''}
+    `;
+  }
+
+  function fmtScribe(o) {
+    const final = o.final_decision || '';
+    const cls = final === 'SHIPPED' ? 'v-pass' : 'v-fail';
+    return `
+      <div class="out-section">
+        <div class="out-row"><span class="out-label">Final Decision</span>
+          <span class="out-verdict ${cls}" style="font-size:14px;padding:4px 12px">${esc(final)}</span>
+        </div>
+        ${o.engineering_md_path ? `<div class="out-row"><span class="out-label">Report</span><code>${esc(o.engineering_md_path)}</code></div>` : ''}
+      </div>
+    `;
+  }
+
+  async function loadGeneratedFiles(card, ticketId) {
+    const loading = card.querySelector('#forge-files-loading');
+    const content = card.querySelector('#forge-files-content');
+    try {
+      const r = await fetch(`/pace/files?ticket_id=${encodeURIComponent(ticketId)}`);
+      const { files } = await r.json();
+      if (loading) loading.style.display = 'none';
+      if (!files || !Object.keys(files).length) {
+        content.innerHTML = '<div style="font-size:12px;color:var(--text-subtle)">No generated files found.</div>';
+        return;
+      }
+      content.innerHTML = Object.entries(files).map(([path, code]) => `
+        <div class="out-file">
+          <div class="out-file-name">${esc(path)}</div>
+          <pre class="out-file-code">${esc(code)}</pre>
+        </div>
+      `).join('');
+    } catch (e) {
+      if (loading) loading.textContent = 'failed to load';
+    }
+  }
+
+  // ── Settings ───────────────────────────────────────────────────────────────
+  function openSettings() {
+    loadSettingsState();
+    document.getElementById('settingsModal').classList.add('open');
+  }
+
+  function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('open');
+  }
+
+  async function loadSettingsState() {
+    try {
+      const r = await fetch('/settings/llm');
+      if (!r.ok) return;
+      const d = await r.json();
+      selectProvider(d.provider || 'claude');
+      if (!d.api_key_set) {
+        document.getElementById('apiKeyInput').placeholder = 'Enter API key…';
+      } else {
+        document.getElementById('apiKeyInput').placeholder = '••••••••  (set — leave blank to keep)';
+      }
+    } catch {}
+  }
+
+  function selectProvider(p) {
+    selectedProvider = p;
+    document.querySelectorAll('.provider-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.p === p);
+    });
+    const ollama = p === 'ollama';
+    document.getElementById('apiKeyOptional').style.display = ollama ? 'inline' : 'none';
+    document.getElementById('apiKeyInput').disabled = ollama;
+  }
+
+  async function saveSettings() {
+    const key = document.getElementById('apiKeyInput').value;
+    try {
+      const r = await fetch('/settings/llm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: selectedProvider, api_key: key }),
+      });
+      if (!r.ok) throw new Error();
+      const fb = document.getElementById('saveFeedback');
+      fb.style.display = 'inline';
+      setTimeout(() => { fb.style.display = 'none'; }, 2000);
+    } catch {
+      alert('Failed to save settings.');
+    }
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('settingsModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeSettings();
+  });
+
+  // ── Utility ────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  checkHealth();
+  setInterval(checkHealth, 30000);
+  loadSpaces();
+</script>
+</body>
+</html>

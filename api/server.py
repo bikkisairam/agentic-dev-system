@@ -14,11 +14,11 @@ if _env_path.exists():
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from jira.jira_reader import get_user_story
-from jira.jira_client import search_tickets
+from jira.jira_client import search_tickets, get_projects
 from orchestrator.pace_orchestrator import run_pace, stream_pace
 import jira_poller
 
@@ -37,10 +37,19 @@ app = FastAPI(title="Agentic Dev System", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+_STATIC_DIR = Path(__file__).parent.parent / "static"
+
+
+# ── UI ────────────────────────────────────────────────────────────────────────
+
+@app.get("/ui", response_class=FileResponse)
+def serve_ui():
+    return FileResponse(_STATIC_DIR / "index.html")
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -65,6 +74,17 @@ PROVIDER_KEY_MAP = {
 class LLMSettings(BaseModel):
     provider: str
     api_key: str = ""
+
+@app.get("/health/llm")
+def health_llm():
+    """Quick LLM connectivity test — sends a minimal prompt and returns ok/error."""
+    try:
+        import llm_client
+        reply = llm_client.chat("Reply with the single word: ok")
+        return {"status": "ok", "provider": llm_client.PROVIDER, "reply": reply.strip()}
+    except Exception as e:
+        return {"status": "error", "provider": os.environ.get("LLM_PROVIDER", "claude"), "error": str(e)}
+
 
 @app.get("/settings/llm")
 def get_llm_settings():
@@ -111,14 +131,54 @@ def _save_to_env(key: str, value: str):
     env_path.write_text("\n".join(new_lines) + "\n")
 
 
-@app.get("/jira/tickets")
-def jira_tickets():
-    """Return all To Do tickets in the project for the UI ticket picker."""
+@app.get("/jira/projects")
+def jira_projects():
+    """Return all Jira projects (spaces) for the UI folder view."""
     try:
-        tickets = search_tickets('project=AA ORDER BY created DESC', max_results=50)
+        return {"projects": get_projects()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/jira/tickets")
+def jira_tickets(project: str = "AA"):
+    """Return tickets for a specific project."""
+    try:
+        tickets = search_tickets(f'project={project} ORDER BY created DESC', max_results=50)
         return {"tickets": tickets}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/pace/files")
+def pace_files(ticket_id: str):
+    """Return generated code and test files for a ticket."""
+    import glob as _glob
+    root = Path(__file__).parent.parent
+    files = {}
+
+    # generated app code
+    gen_dir = root / "generated"
+    for f in _glob.glob(str(gen_dir / "**" / "*.py"), recursive=True):
+        try:
+            files[f"generated/{Path(f).parent.name}/{Path(f).name}"] = Path(f).read_text()
+        except Exception:
+            pass
+
+    # generated tests
+    test_dir = root / "tests" / "generated"
+    for f in _glob.glob(str(test_dir / f"*{ticket_id.lower().replace('-','_')}*")):
+        try:
+            files[f"tests/generated/{Path(f).name}"] = Path(f).read_text()
+        except Exception:
+            pass
+
+    # story card
+    sc = root / "story-card.yaml"
+    if sc.exists():
+        files["story-card.yaml"] = sc.read_text()
+
+    return {"files": files}
 
 
 @app.get("/jira-story")

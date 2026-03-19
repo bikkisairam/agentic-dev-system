@@ -15,6 +15,13 @@ def _headers():
     return {"Accept": "application/json", "Content-Type": "application/json"}
 
 
+def get_projects() -> list[dict]:
+    url = f"{JIRA_URL}/rest/api/3/project"
+    resp = requests.get(url, headers=_headers(), auth=_auth())
+    resp.raise_for_status()
+    return [{"key": p["key"], "name": p["name"]} for p in resp.json()]
+
+
 def search_tickets(jql: str, max_results: int = 50) -> list[dict]:
     # Atlassian deprecated GET /search — use POST /search/jql instead
     url = f"{JIRA_URL}/rest/api/3/search/jql"

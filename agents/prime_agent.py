@@ -61,7 +61,11 @@ def run_prime(state: dict) -> dict:
             pass
         return {**state, "errors": state.get("errors", []) + [f"PRIME: {reason}"]}
 
-    story_card = _generate_story_card(ticket)
+    try:
+        story_card = _generate_story_card(ticket)
+    except Exception as e:
+        return {**state, "story_card": {"__failed__": True, "error": str(e)},
+                "errors": state.get("errors", []) + [f"PRIME: LLM error — {e}"]}
     _write_story_card(story_card, STORY_CARD_PATH)
 
     # Jira updates (best-effort — don't abort pipeline on failure)

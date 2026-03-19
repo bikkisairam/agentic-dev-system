@@ -99,12 +99,12 @@ def _parallel_node(state: PACEState) -> PACEState:
 def _error_result(name: str, reason: str) -> dict:
     if name == "gate":
         return {"decision": "HOLD", "ac_verdicts": [], "total": 0,
-                "passed": 0, "failed": 0, "error": reason}
+                "passed": 0, "failed": 0, "error": reason, "__failed__": True}
     if name == "sentinel":
         return {"decision": "ADVISORY", "findings": [],
-                "summary": f"Agent error: {reason}"}
+                "summary": f"Agent error: {reason}", "__failed__": True}
     return {"decision": "ADVISORY", "checks": [],
-            "summary": f"Agent error: {reason}"}
+            "summary": f"Agent error: {reason}", "__failed__": True}
 
 
 # ── Graph construction ────────────────────────────────────────────────────────
@@ -161,10 +161,14 @@ def _emit_events(node_name: str, state: dict):
 
 
 def _event(stage: str, output: Any, errors: list) -> dict:
+    # A stage is only "error" if its own output signals a hard failure,
+    # not because some other stage added a non-critical warning to errors.
+    output = output or {}
+    stage_failed = isinstance(output, dict) and output.get("__failed__", False)
     return {
         "stage":  stage,
-        "status": "error" if errors else "success",
-        "output": output or {},
+        "status": "error" if stage_failed else "done",
+        "output": output,
         "errors": errors,
     }
 

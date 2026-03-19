@@ -6,7 +6,13 @@
       "Bash(/c/Projects/agentic-dev-system/venv/Scripts/python.exe -c \"from langgraph.graph import StateGraph, END; print\\('OK'\\)\" 2>&1)",
       "Bash(/c/Projects/agentic-dev-system/venv/Scripts/python.exe -c \"import langgraph; print\\(langgraph.__version__\\)\" 2>&1)",
       "Bash(/c/Projects/agentic-dev-system/venv/Scripts/python.exe -c \"import pkg_resources; print\\(pkg_resources.get_distribution\\('langgraph'\\).version\\)\" 2>&1)",
-      "Bash(/c/Projects/agentic-dev-system/venv/Scripts/pip.exe show:*)"
+      "Bash(/c/Projects/agentic-dev-system/venv/Scripts/pip.exe show:*)",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8005 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Done'\")",
+      "Bash(powershell -Command \"\n\\\\$conns = Get-NetTCPConnection -LocalPort 8005 -ErrorAction SilentlyContinue\nforeach \\(\\\\$c in \\\\$conns\\) { Stop-Process -Id \\\\$c.OwningProcess -Force -ErrorAction SilentlyContinue }\nWrite-Host 'Killed'\nStart-Sleep 2\n\\(Get-NetTCPConnection -LocalPort 8005 -ErrorAction SilentlyContinue\\).Count\n\")"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "jira"
+  ]
 }
