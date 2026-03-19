@@ -54,8 +54,11 @@ def _run_suite(slug: str, story_card: dict) -> list[dict]:
 
 
 def _run_pytest(test_file: str) -> dict:
+    python = os.path.join(REPO_ROOT, "venv", "Scripts", "python.exe")
+    if not os.path.exists(python):
+        python = "python"
     result = subprocess.run(
-        ["python", "-m", "pytest", test_file, "-v", "--tb=short"],
+        [python, "-m", "pytest", test_file, "-v", "--tb=short"],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,

@@ -16,7 +16,7 @@ Check specifically for:
 1. HARDCODED_SECRETS: API keys, passwords, tokens, or secrets hardcoded as string literals
    (values that should come from os.environ but are instead literal strings like "mysecret123")
 2. SQL_INJECTION: Raw string formatting or concatenation used to build SQL queries
-   (e.g., f"SELECT * FROM users WHERE id={user_id}" instead of parameterised queries)
+   (e.g., f"SELECT * FROM users WHERE id={{user_id}}" instead of parameterised queries)
 3. MISSING_AUTH: FastAPI endpoints that handle sensitive data but have no authentication
    (no Depends(), no Bearer token check, no API key header, no OAuth)
 

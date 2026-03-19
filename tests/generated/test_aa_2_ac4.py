@@ -1,23 +1,35 @@
+import pytest
 import jwt
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from generated.aa_2.app import app
 
+client = TestClient(app)
+
 def test_ac4():
-    client = TestClient(app)
-    
-    response = client.post("/login", json={"username": "testuser", "password": "testpass"})
+    """Test that JWT expires in 24 hours"""
+    # Login to get JWT token
+    response = client.post(
+        "/login",
+        json={"username": "testuser", "password": "testpass"}
+    )
     
     assert response.status_code == 200
     token = response.json()["access_token"]
     
-    decoded_token = jwt.decode(token, options={"verify_signature": False})
+    # Decode JWT without verification to get the claims
+    decoded = jwt.decode(token, options={"verify_signature": False})
     
-    exp_timestamp = decoded_token["exp"]
-    iat_timestamp = decoded_token["iat"]
+    # Get the exp claim
+    exp_timestamp = decoded["exp"]
     
-    time_diff = exp_timestamp - iat_timestamp
+    # Get current timestamp
+    current_timestamp = datetime.utcnow().timestamp()
     
-    expected_24_hours_in_seconds = 24 * 60 * 60
-    assert time_diff == expected_24_hours_in_seconds
+    # Calculate expected expiration (24 hours from now)
+    expected_exp = current_timestamp + (24 * 60 * 60)
+    
+    # Allow 5 second tolerance for test execution time
+    tolerance = 5
+    assert abs(exp_timestamp - expected_exp) <= tolerance, \
+        f"Token expiration {exp_timestamp} is not 24 hours from now {expected_exp}"

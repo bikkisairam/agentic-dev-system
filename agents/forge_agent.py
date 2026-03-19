@@ -20,14 +20,20 @@ Story: {title}
 Acceptance Criterion {ac_id}: {ac_description}
 Test hint: {test_hint}
 
-The FastAPI app will be importable as:
+The FastAPI app is importable as:
   from generated.{slug}.app import app
+
+Current contents of generated/{slug}/app.py (use this to match real endpoint paths and function names):
+```python
+{current_code}
+```
 
 Write a pytest test file that:
 1. Imports TestClient from fastapi.testclient and imports app from generated.{slug}.app
 2. Has exactly one test function: def test_{ac_id}():
 3. Tests ONLY this acceptance criterion: {ac_description}
 4. Asserts the expected behaviour described in the test hint
+5. Uses ONLY routes, functions and variable names that exist in the current app code above — never invent endpoints or mock functions that are not there
 
 Output ONLY valid Python code. No markdown fences. No explanations.
 """
@@ -144,8 +150,9 @@ def _tdd_loop(ac: dict, story_card: dict, slug: str, index: int) -> dict:
     test_file = os.path.join(REPO_ROOT, "tests", "generated", f"test_{slug}_{ac_id}.py")
     impl_file = os.path.join(REPO_ROOT, "generated", slug, "app.py")
 
-    # Step 1 — write failing test
-    test_code = _generate_test(ac, story_card, slug)
+    # Step 1 — write test, giving the LLM a view of what's already in app.py
+    current_code = _read_file(impl_file)
+    test_code = _generate_test(ac, story_card, slug, current_code)
     _write_file(test_file, test_code)
 
     passed = False
@@ -176,13 +183,14 @@ def _tdd_loop(ac: dict, story_card: dict, slug: str, index: int) -> dict:
 
 # ── LLM calls ─────────────────────────────────────────────────────────────────
 
-def _generate_test(ac: dict, story_card: dict, slug: str) -> str:
+def _generate_test(ac: dict, story_card: dict, slug: str, current_code: str = "") -> str:
     prompt = TEST_PROMPT.format(
         title=story_card["title"],
         ac_id=ac["id"],
         ac_description=ac["description"],
         test_hint=ac.get("test_hint", ""),
         slug=slug,
+        current_code=current_code or "(empty — app not yet written)",
     )
     return _llm(prompt)
 
@@ -275,8 +283,11 @@ def _ensure_conftest(test_dir: str) -> None:
 
 
 def _run_pytest(test_file: str) -> dict:
+    python = os.path.join(REPO_ROOT, "venv", "Scripts", "python.exe")
+    if not os.path.exists(python):
+        python = "python"
     result = subprocess.run(
-        ["python", "-m", "pytest", test_file, "-v", "--tb=short"],
+        [python, "-m", "pytest", test_file, "-v", "--tb=short"],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,

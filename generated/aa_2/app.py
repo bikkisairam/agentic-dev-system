@@ -1,13 +1,17 @@
-from fastapi import FastAPI, status, HTTPException, Request
-from pydantic import BaseModel
+import os
+import sys
 from datetime import datetime, timedelta
-from typing import Optional, Dict
-from collections import defaultdict
-import jwt
-import bcrypt
-import time
+from typing import Optional
 
-app = FastAPI()
+import bcrypt
+import jwt
+from fastapi import FastAPI, HTTPException, Request, status
+from pydantic import BaseModel
+
+sys.path.insert(
+    0,
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+)
 
 
 class LoginRequest(BaseModel):
@@ -29,11 +33,11 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 USERS_DB = {
     "test@example.com": {
         "email": "test@example.com",
-        "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5YmMxSUaqvyMa"
+        "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5YmMxSUaqvyMa",
     }
 }
 
-rate_limit_store: Dict[str, list] = defaultdict(list)
+rate_limit_store: dict[str, list[float]] = {}
 
 
 def get_client_ip(request: Request) -> str:
@@ -43,14 +47,18 @@ def get_client_ip(request: Request) -> str:
 
 def check_rate_limit(ip: str) -> bool:
     """Check if IP has exceeded rate limit using sliding window approach.
-    
+
     Returns True if request is allowed, False if rate limited.
     """
-    current_time = time.time()
+    if ip not in rate_limit_store:
+        rate_limit_store[ip] = []
+
+    current_time = __import__("time").time()
     window_start = current_time - RATE_LIMIT_WINDOW_SECONDS
 
     rate_limit_store[ip] = [
-        timestamp for timestamp in rate_limit_store[ip]
+        timestamp
+        for timestamp in rate_limit_store[ip]
         if timestamp > window_start
     ]
 
@@ -64,7 +72,10 @@ def check_rate_limit(ip: str) -> bool:
 def create_access_token(
     data: dict, expires_delta: Optional[timedelta] = None
 ) -> str:
-    """Create a JWT access token with 24-hour expiration."""
+    """Create a JWT access token with 24-hour expiration.
+
+    Sets JWT exp claim to current time plus 86400 seconds (24 hours).
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -77,26 +88,39 @@ def create_access_token(
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a bcrypt hashed password."""
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
-    )
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
+    except Exception:
+        return False
 
 
 def authenticate_user(email: str, password: str) -> bool:
-    """Authenticate user by email and password."""
+    """Authenticate user by email and password.
+
+    Returns False if email not found or password verification fails.
+    """
     user = USERS_DB.get(email)
-    return user is not None and verify_password(password, user["hashed_password"])
+    if user is None:
+        return False
+    return verify_password(password, user["hashed_password"])
 
 
-@app.post("/auth/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+app = FastAPI()
+
+
+@app.post(
+    "/auth/login", response_model=LoginResponse, status_code=status.HTTP_200_OK
+)
 async def login(request: LoginRequest, http_request: Request) -> LoginResponse:
     """Handle user login with rate limiting and JWT token generation.
-    
+
     Returns 200 with JWT token on valid credentials.
     Returns 401 Unauthorized when email not found or password verification fails.
     Returns 429 Too Many Requests when rate limit exceeded (5 attempts per minute per IP).
     Queries database for user by email, verifies password with bcrypt,
-    generates JWT token with 24-hour expiration.
+    generates JWT token with 24-hour expiration (86400 seconds).
     """
     client_ip = get_client_ip(http_request)
 
