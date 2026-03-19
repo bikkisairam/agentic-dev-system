@@ -1,23 +1,40 @@
 acceptance_criteria:
-- description: GET /health returns 200
+- description: POST /auth/login accepts { email, password }
   id: ac1
-  implementation_hint: 'Implement: GET /health returns 200'
-  test_hint: 'Test that: GET /health returns 200'
-- description: 'Response body contains {"status": "ok"}'
+  implementation_hint: Create a FastAPI endpoint that receives email and password
+    in request body JSON
+  test_hint: Send POST request with valid email and password fields and verify endpoint
+    accepts the payload
+- description: Returns 200 with JWT token on valid credentials
   id: ac2
-  implementation_hint: 'Implement: Response body contains {"status": "ok"}'
-  test_hint: 'Test that: Response body contains {"status": "ok"}'
-- description: 'Status: To Do'
+  implementation_hint: Verify credentials against database, hash password with bcrypt,
+    and generate JWT token if match
+  test_hint: Test with known valid credentials and assert 200 status code with token
+    in response body
+- description: Returns 401 on invalid credentials
   id: ac3
-  implementation_hint: 'Implement: Status: To Do'
-  test_hint: 'Test that: Status: To Do'
-branch_name: feature/aa-1-as-a-user-i-want-a-health-endpoint-that-
-description: "Add some detail + acceptance criteria like:\n        - - GET /health\
-  \ returns 200\n      - - Response body contains {\"status\": \"ok\"}\n    - Status:\
-  \ To Do"
+  implementation_hint: Compare provided password hash against stored hash and return
+    401 status when mismatch occurs
+  test_hint: Test with incorrect password and invalid email separately, verify 401
+    status code returned
+- description: JWT expires in 24 hours
+  id: ac4
+  implementation_hint: Set JWT exp claim to current time plus 86400 seconds when creating
+    token
+  test_hint: Decode JWT token and verify exp timestamp is approximately 24 hours in
+    future
+- description: Rate limited to 5 attempts per minute per IP
+  id: ac5
+  implementation_hint: Implement middleware or decorator to track login attempts per
+    IP address with sliding window
+  test_hint: Send 6 requests from same IP within 60 seconds and verify 6th request
+    returns rate limit error
+branch_name: feature/aa-2-jwt-authentication-api
+description: Create JWT-based authentication endpoint for secure user login with email
+  and password
 framework: fastapi
 language: python
 priority: Medium
 story_points: 0
-ticket_id: AA-1
-title: As a user, I want a /health endpoint that returns status OK
+ticket_id: AA-2
+title: Build JWT authentication API for user login
