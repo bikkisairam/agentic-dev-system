@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from generated.aa_1.app import app
 
