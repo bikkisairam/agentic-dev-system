@@ -1,5 +1,5 @@
 from fastapi import FastAPI, status, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from collections import defaultdict
@@ -11,7 +11,7 @@ app = FastAPI()
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -38,14 +38,11 @@ rate_limit_store: Dict[str, list] = defaultdict(list)
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP from request."""
-    if request.client:
-        return request.client.host
-    return "unknown"
+    return request.client.host if request.client else "unknown"
 
 
 def check_rate_limit(ip: str) -> bool:
-    """
-    Check if IP has exceeded rate limit using sliding window approach.
+    """Check if IP has exceeded rate limit using sliding window approach.
     
     Returns True if request is allowed, False if rate limited.
     """
@@ -67,13 +64,13 @@ def check_rate_limit(ip: str) -> bool:
 def create_access_token(
     data: dict, expires_delta: Optional[timedelta] = None
 ) -> str:
-    """Create a JWT access token."""
+    """Create a JWT access token with 24-hour expiration."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": int(expire.timestamp())})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -85,9 +82,22 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-@app.post("/auth/login", response_model=LoginResponse)
+def authenticate_user(email: str, password: str) -> bool:
+    """Authenticate user by email and password."""
+    user = USERS_DB.get(email)
+    return user is not None and verify_password(password, user["hashed_password"])
+
+
+@app.post("/auth/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 async def login(request: LoginRequest, http_request: Request) -> LoginResponse:
-    """Handle user login with rate limiting."""
+    """Handle user login with rate limiting and JWT token generation.
+    
+    Returns 200 with JWT token on valid credentials.
+    Returns 401 Unauthorized when email not found or password verification fails.
+    Returns 429 Too Many Requests when rate limit exceeded (5 attempts per minute per IP).
+    Queries database for user by email, verifies password with bcrypt,
+    generates JWT token with 24-hour expiration.
+    """
     client_ip = get_client_ip(http_request)
 
     if not check_rate_limit(client_ip):
@@ -96,11 +106,7 @@ async def login(request: LoginRequest, http_request: Request) -> LoginResponse:
             detail="Too many login attempts. Please try again later.",
         )
 
-    user = USERS_DB.get(request.email)
-
-    if user is None or not verify_password(
-        request.password, user["hashed_password"]
-    ):
+    if not authenticate_user(request.email, request.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )

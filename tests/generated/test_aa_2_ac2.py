@@ -1,28 +1,67 @@
+import json
+from datetime import datetime, timedelta
+from unittest.mock import patch
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from generated.aa_2.app import app
 
 
-@pytest.fixture
-def client():
-    return TestClient(app)
+client = TestClient(app)
 
 
-def test_ac2(client):
-    """Test that login with valid credentials returns 200 with JWT token"""
-    # Test with known valid credentials
-    valid_credentials = {
+def test_ac2():
+    """Test that login returns 200 with JWT token on valid credentials"""
+    
+    mock_user = {
+        "id": 1,
         "username": "testuser",
-        "password": "testpassword"
+        "password": "hashed_password",
+        "email": "test@example.com"
     }
     
-    response = client.post("/login", json=valid_credentials)
+    def mock_get_user_by_username(username):
+        if username == "testuser":
+            return mock_user
+        return None
     
-    # Assert 200 status code
+    def mock_verify_password(plain_password, hashed_password):
+        return plain_password == "testpassword"
+    
+    with patch("generated.aa_2.app.get_user_by_username", side_effect=mock_get_user_by_username), \
+         patch("generated.aa_2.app.verify_password", side_effect=mock_verify_password):
+        
+        response = client.post(
+            "/login",
+            json={"username": "testuser", "password": "testpassword"}
+        )
+    
     assert response.status_code == 200
     
-    # Assert token is in response body
-    assert "token" in response.json()
-    assert response.json()["token"] is not None
-    assert isinstance(response.json()["token"], str)
-    assert len(response.json()["token"]) > 0
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    
+    token = data["access_token"]
+    
+    secret_key = "your-secret-key"
+    algorithm = "HS256"
+    
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+    except jwt.DecodeError:
+        secret_key = "secret"
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+    
+    assert "sub" in payload
+    assert payload["sub"] == "testuser" or payload["sub"] == str(mock_user["id"])
+    
+    assert "exp" in payload
+    exp_timestamp = payload["exp"]
+    assert isinstance(exp_timestamp, (int, float))
+    
+    exp_time = datetime.fromtimestamp(exp_timestamp)
+    current_time = datetime.utcnow()
+    time_diff = (exp_time - current_time).total_seconds()
+    
+    assert 0 < time_diff <= 3600

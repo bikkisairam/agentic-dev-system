@@ -1,37 +1,37 @@
 acceptance_criteria:
 - description: POST /auth/login accepts { email, password }
   id: ac1
-  implementation_hint: Create a FastAPI endpoint that receives email and password
-    in request body JSON
-  test_hint: Send POST request with valid email and password fields and verify endpoint
-    accepts the payload
+  implementation_hint: Create a FastAPI endpoint that validates JSON request body
+    contains email and password fields.
+  test_hint: Send POST requests with valid and invalid JSON payloads to verify request
+    parsing.
 - description: Returns 200 with JWT token on valid credentials
   id: ac2
-  implementation_hint: Verify credentials against database, hash password with bcrypt,
-    and generate JWT token if match
-  test_hint: Test with known valid credentials and assert 200 status code with token
-    in response body
+  implementation_hint: Query database for user by email, verify password with bcrypt,
+    generate JWT token with 24-hour expiration.
+  test_hint: Mock database lookup and verify JWT token is returned with correct payload
+    and expiration timestamp.
 - description: Returns 401 on invalid credentials
   id: ac3
-  implementation_hint: Compare provided password hash against stored hash and return
-    401 status when mismatch occurs
-  test_hint: Test with incorrect password and invalid email separately, verify 401
-    status code returned
+  implementation_hint: Return 401 Unauthorized response when email not found or bcrypt
+    password verification fails.
+  test_hint: Test with non-existent email and incorrect password combinations to confirm
+    401 responses.
 - description: JWT expires in 24 hours
   id: ac4
-  implementation_hint: Set JWT exp claim to current time plus 86400 seconds when creating
-    token
-  test_hint: Decode JWT token and verify exp timestamp is approximately 24 hours in
-    future
+  implementation_hint: Set JWT exp claim to current time plus 86400 seconds using
+    PyJWT library.
+  test_hint: Decode JWT token and verify exp timestamp is exactly 24 hours from issue
+    time.
 - description: Rate limited to 5 attempts per minute per IP
   id: ac5
-  implementation_hint: Implement middleware or decorator to track login attempts per
-    IP address with sliding window
-  test_hint: Send 6 requests from same IP within 60 seconds and verify 6th request
-    returns rate limit error
-branch_name: feature/aa-2-jwt-authentication-api
-description: Create JWT-based authentication endpoint for secure user login with email
-  and password
+  implementation_hint: Implement middleware using slowapi library to track login attempts
+    by client IP address.
+  test_hint: Send 6 consecutive requests from same IP within 60 seconds and verify
+    6th request is rate-limited.
+branch_name: feature/aa-2-jwt-authentication-api-user-login
+description: Create a secure JWT-based authentication endpoint for user login with
+  email and password
 framework: fastapi
 language: python
 priority: Medium
