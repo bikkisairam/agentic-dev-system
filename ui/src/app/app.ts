@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ApiService } from './api.service';
 
 type StageStatus = 'idle' | 'running' | 'success' | 'error';
@@ -11,11 +12,21 @@ interface Stage {
   icon: string;
   status: StageStatus;
   output: any;
+  parallel: boolean;
 }
+
+interface JiraTicket {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+}
+
+const PARALLEL_STAGES = new Set(['gate', 'sentinel', 'conduit']);
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, HttpClientModule],
+  imports: [CommonModule, HttpClientModule, FormsModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -23,23 +34,48 @@ export class App {
   private api = inject(ApiService);
 
   pipelineRunning = signal(false);
-  serverOnline = signal<boolean | null>(null);
+  serverOnline    = signal<boolean | null>(null);
+  ticketId        = signal('');
+  selectedTicket  = signal<JiraTicket | null>(null);
+  tickets         = signal<JiraTicket[]>([]);
+  ticketsLoading  = signal(false);
 
   stages = signal<Stage[]>([
-    { id: 'plan',     label: 'Plan',     icon: '📋', status: 'idle', output: null },
-    { id: 'build',    label: 'Build',    icon: '🔨', status: 'idle', output: null },
-    { id: 'check',    label: 'Check',    icon: '🧪', status: 'idle', output: null },
-    { id: 'evaluate', label: 'Evaluate', icon: '✅', status: 'idle', output: null },
-    { id: 'push',     label: 'Push',     icon: '📤', status: 'idle', output: null },
+    { id: 'prime',    label: 'Prime',    icon: '📋', status: 'idle', output: null, parallel: false },
+    { id: 'forge',    label: 'Forge',    icon: '⚒️',  status: 'idle', output: null, parallel: false },
+    { id: 'gate',     label: 'Gate',     icon: '🧪', status: 'idle', output: null, parallel: true  },
+    { id: 'sentinel', label: 'Sentinel', icon: '🛡️', status: 'idle', output: null, parallel: true  },
+    { id: 'conduit',  label: 'Conduit',  icon: '🔁', status: 'idle', output: null, parallel: true  },
+    { id: 'scribe',   label: 'Scribe',   icon: '📝', status: 'idle', output: null, parallel: false },
   ]);
 
-  ngOnInit() { this.pingServer(); }
+  ngOnInit() {
+    this.pingServer();
+    this.loadTickets();
+  }
 
   pingServer() {
     this.api.getStatus().subscribe({
-      next: () => this.serverOnline.set(true),
-      error: () => this.serverOnline.set(false)
+      next:  () => this.serverOnline.set(true),
+      error: () => this.serverOnline.set(false),
     });
+  }
+
+  loadTickets() {
+    this.ticketsLoading.set(true);
+    this.api.getTickets().subscribe({
+      next: (res) => {
+        this.tickets.set(res.tickets ?? []);
+        this.ticketsLoading.set(false);
+      },
+      error: () => this.ticketsLoading.set(false),
+    });
+  }
+
+  selectTicket(ticket: JiraTicket) {
+    this.selectedTicket.set(ticket);
+    this.ticketId.set(ticket.id);
+    this.resetStages();
   }
 
   setStageStatus(id: string, status: StageStatus, output: any = null) {
@@ -53,15 +89,13 @@ export class App {
   }
 
   runFullPipeline() {
+    if (!this.ticketId().trim()) return;
     this.resetStages();
     this.pipelineRunning.set(true);
+    this.setStageStatus('prime', 'running');
 
-    const stageOrder = ['plan', 'build', 'check', 'evaluate', 'push'];
-
-    // Set first stage to running immediately
-    this.setStageStatus('plan', 'running');
-
-    const es = new EventSource('http://localhost:8005/stream');
+    let parallelResolved = 0;
+    const es = new EventSource(this.api.paceStreamUrl(this.ticketId()));
 
     es.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -72,13 +106,22 @@ export class App {
         return;
       }
 
-      // Mark current stage complete
-      this.setStageStatus(data.stage, data.status, data.output);
+      const stage  = data.stage as string;
+      const status = data.status as StageStatus;
 
-      // Set next stage to running
-      const nextIndex = stageOrder.indexOf(data.stage) + 1;
-      if (nextIndex < stageOrder.length) {
-        this.setStageStatus(stageOrder[nextIndex], 'running');
+      this.setStageStatus(stage, status, data.output);
+
+      if (stage === 'prime' && status === 'success') {
+        this.setStageStatus('forge', 'running');
+      } else if (stage === 'forge') {
+        this.setStageStatus('gate',     'running');
+        this.setStageStatus('sentinel', 'running');
+        this.setStageStatus('conduit',  'running');
+      } else if (PARALLEL_STAGES.has(stage)) {
+        parallelResolved++;
+        if (parallelResolved === 3) {
+          this.setStageStatus('scribe', 'running');
+        }
       }
     };
 
@@ -91,79 +134,31 @@ export class App {
     };
   }
 
-  runPlan() {
-    this.setStageStatus('plan', 'running');
-    this.api.getStory().subscribe({
-      next: (res) => this.setStageStatus('plan', 'success', res.story ?? res),
-      error: (err) => this.setStageStatus('plan', 'error', err.error)
-    });
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
-  runBuild() {
-    this.setStageStatus('build', 'running');
-    this.api.build().subscribe({
-      next: (res) => this.setStageStatus('build', 'success', res.code ?? res),
-      error: (err) => this.setStageStatus('build', 'error', err.error)
-    });
-  }
-
-  runCheck() {
-    this.setStageStatus('check', 'running');
-    this.api.test().subscribe({
-      next: (res) => this.setStageStatus('check', res.passed ? 'success' : 'error', res),
-      error: (err) => this.setStageStatus('check', 'error', err.error)
-    });
-  }
-
-  runEvaluate() {
-    this.setStageStatus('evaluate', 'running');
-    this.api.commit().subscribe({
-      next: (res) => this.setStageStatus('evaluate', res.status === 'committed' ? 'success' : 'error', res),
-      error: (err) => this.setStageStatus('evaluate', 'error', err.error)
-    });
-  }
-
-  runPush() {
-    this.setStageStatus('push', 'running');
-    this.api.push().subscribe({
-      next: (res) => this.setStageStatus('push', res.status === 'pushed' ? 'success' : 'error', res),
-      error: (err) => this.setStageStatus('push', 'error', err.error)
-    });
-  }
-
-  triggerStage(stage: Stage, event: Event) {
-    event.stopPropagation();
-    const actions: Record<string, () => void> = {
-      plan:     () => this.runPlan(),
-      build:    () => this.runBuild(),
-      check:    () => this.runCheck(),
-      evaluate: () => this.runEvaluate(),
-      push:     () => this.runPush(),
-    };
-    actions[stage.id]?.();
-  }
-
-  get completedCount(): number {
-    return this.stages().filter(s => s.status === 'success').length;
-  }
-
-  get totalStages(): number {
-    return this.stages().length;
-  }
-
-  get hasAnyOutput(): boolean {
-    return this.stages().some(s => s.output !== null);
-  }
+  get parallelStages(): Stage[] { return this.stages().filter(s => s.parallel); }
+  get completedCount(): number  { return this.stages().filter(s => s.status === 'success').length; }
+  get totalStages(): number     { return this.stages().length; }
 
   stageOf(id: string): Stage {
     return this.stages().find(s => s.id === id)!;
   }
 
-  checkEntries(checks: Record<string, boolean>): { key: string; pass: boolean }[] {
-    return Object.entries(checks ?? {}).map(([key, pass]) => ({ key, pass }));
-  }
-
   formatJson(obj: any): string {
     return JSON.stringify(obj, null, 2);
+  }
+
+  decisionClass(decision: string): string {
+    if (decision === 'SHIP' || decision === 'SHIPPED') return 'tag-success';
+    if (decision === 'ADVISORY')                       return 'tag-warn';
+    return 'tag-error';
+  }
+
+  statusBadge(status: string): string {
+    const s = status?.toLowerCase();
+    if (s === 'to do')       return 'badge-todo';
+    if (s === 'in progress') return 'badge-inprogress';
+    if (s === 'done')        return 'badge-done';
+    return 'badge-todo';
   }
 }

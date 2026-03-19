@@ -1,0 +1,23 @@
+acceptance_criteria:
+- description: GET /health returns 200
+  id: ac1
+  implementation_hint: 'Implement: GET /health returns 200'
+  test_hint: 'Test that: GET /health returns 200'
+- description: 'Response body contains {"status": "ok"}'
+  id: ac2
+  implementation_hint: 'Implement: Response body contains {"status": "ok"}'
+  test_hint: 'Test that: Response body contains {"status": "ok"}'
+- description: 'Status: To Do'
+  id: ac3
+  implementation_hint: 'Implement: Status: To Do'
+  test_hint: 'Test that: Status: To Do'
+branch_name: feature/aa-1-as-a-user-i-want-a-health-endpoint-that-
+description: "Add some detail + acceptance criteria like:\n        - - GET /health\
+  \ returns 200\n      - - Response body contains {\"status\": \"ok\"}\n    - Status:\
+  \ To Do"
+framework: fastapi
+language: python
+priority: Medium
+story_points: 0
+ticket_id: AA-1
+title: As a user, I want a /health endpoint that returns status OK

@@ -7,21 +7,24 @@
       <span class="logo-text">AgentDev</span>
     </div>
 
-    <div class="server-badge" [class.online]="serverOnline() === true" [class.offline]="serverOnline() === false">
+    <div class="server-badge"
+         [class.online]="serverOnline() === true"
+         [class.offline]="serverOnline() === false">
       <span class="dot"></span>
       {{ serverOnline() === true ? 'API Online' : serverOnline() === false ? 'API Offline' : 'Checking...' }}
     </div>
 
     <nav class="nav">
       @for (stage of stages(); track stage.id) {
-        <button class="nav-item"
-                [class.success]="stage.status === 'success'"
-                [class.error]="stage.status === 'error'"
-                [class.running]="stage.status === 'running'">
+        <div class="nav-item"
+             [class.success]="stage.status === 'success'"
+             [class.error]="stage.status === 'error'"
+             [class.running]="stage.status === 'running'"
+             [class.parallel-item]="stage.parallel">
           <span class="nav-icon">{{ stage.icon }}</span>
           <span class="nav-label">{{ stage.label }}</span>
           <span class="status-dot" [attr.data-status]="stage.status"></span>
-        </button>
+        </div>
       }
     </nav>
 
@@ -41,71 +44,237 @@
     <header class="topbar">
       <div class="topbar-title">
         <h1>PACE Pipeline</h1>
-        <p>Plan · Act · Check · Evaluate</p>
+        <p>Prime · Forge · Gate · Sentinel · Conduit · Scribe</p>
       </div>
       <div class="topbar-actions">
         <button class="btn-secondary" (click)="resetStages()" [disabled]="pipelineRunning()">Reset</button>
-        <button class="btn-primary" (click)="runFullPipeline()" [disabled]="pipelineRunning()">
+        <button class="btn-primary" (click)="runFullPipeline()"
+                [disabled]="pipelineRunning() || !selectedTicket()">
           @if (pipelineRunning()) {
             <span class="spinner"></span> Running...
           } @else {
-            ▶ Run Full Pipeline
+            ▶ Run Pipeline
           }
         </button>
       </div>
     </header>
 
-    <!-- Pipeline Status Bar -->
-    <section class="pipeline-section">
-      @for (stage of stages(); track stage.id; let last = $last) {
-        <div class="pipeline-card" [attr.data-status]="stage.status">
-          <div class="card-header">
-            <span class="card-icon">{{ stage.icon }}</span>
-            <span class="card-label">{{ stage.label }}</span>
-            <span class="card-status-icon">
-              @switch (stage.status) {
-                @case ('success') { ✅ }
-                @case ('error')   { ❌ }
-                @case ('running') { <span class="spinner-sm"></span> }
-                @default          { ○ }
-              }
-            </span>
-          </div>
-          <div class="card-subtitle">
-            @switch (stage.status) {
-              @case ('idle')    { <span class="muted">Not started</span> }
-              @case ('running') { <span class="muted-pulse">Processing...</span> }
-              @case ('success') { <span class="tag-success">Completed</span> }
-              @case ('error')   { <span class="tag-error">Failed</span> }
-            }
-          </div>
-          <button class="card-run-btn" (click)="triggerStage(stage, $event)"
-                  [disabled]="stage.status === 'running' || pipelineRunning()">
-            Run
-          </button>
+    <!-- ── Ticket Picker ────────────────────────────────────────────────────── -->
+    <section class="ticket-picker">
+      <div class="picker-header">
+        <span class="picker-title">Jira Tickets — Project AA</span>
+        <button class="btn-refresh" (click)="loadTickets()" [disabled]="ticketsLoading()">
+          {{ ticketsLoading() ? 'Loading...' : '↻ Refresh' }}
+        </button>
+      </div>
+
+      @if (ticketsLoading()) {
+        <div class="picker-empty muted">Fetching tickets from Jira...</div>
+      } @else if (tickets().length === 0) {
+        <div class="picker-empty muted">No tickets found in project AA.</div>
+      } @else {
+        <div class="ticket-list">
+          @for (ticket of tickets(); track ticket.id) {
+            <button class="ticket-row"
+                    [class.selected]="selectedTicket()?.id === ticket.id"
+                    (click)="selectTicket(ticket)">
+              <span class="ticket-key">{{ ticket.id }}</span>
+              <span class="ticket-title">{{ ticket.title }}</span>
+              <span class="ticket-badge" [class]="statusBadge(ticket.status)">{{ ticket.status }}</span>
+            </button>
+          }
         </div>
-        @if (!last) { <div class="arrow">→</div> }
       }
     </section>
 
-    <!-- ── Inline Results ─────────────────────────────────────── -->
+    <!-- ── Selected Ticket Banner ──────────────────────────────────────────── -->
+    @if (selectedTicket()) {
+      <div class="selected-banner">
+        <div class="selected-left">
+          <span class="selected-label">Selected ticket</span>
+          <span class="selected-key">{{ selectedTicket()!.id }}</span>
+          <span class="selected-title">{{ selectedTicket()!.title }}</span>
+        </div>
+        <span class="ticket-badge" [class]="statusBadge(selectedTicket()!.status)">
+          {{ selectedTicket()!.status }}
+        </span>
+      </div>
+    }
 
-    <!-- PLAN result -->
-    @if (stageOf('plan').output) {
+    <!-- ── Pipeline Flow ────────────────────────────────────────────────────── -->
+    <section class="pipeline-section">
+
+      <!-- PRIME -->
+      <div class="pipeline-card" [attr.data-status]="stageOf('prime').status">
+        <div class="card-header">
+          <span class="card-icon">📋</span>
+          <span class="card-label">Prime</span>
+          <span class="card-status-icon">
+            @switch (stageOf('prime').status) {
+              @case ('success') { ✅ }
+              @case ('error')   { ❌ }
+              @case ('running') { <span class="spinner-sm"></span> }
+              @default          { ○ }
+            }
+          </span>
+        </div>
+        <div class="card-sub">Validates ticket · Generates story card</div>
+        <div class="card-status-text">
+          @switch (stageOf('prime').status) {
+            @case ('idle')    { <span class="muted">Not started</span> }
+            @case ('running') { <span class="muted-pulse">Validating...</span> }
+            @case ('success') { <span class="tag-success">Story card ready</span> }
+            @case ('error')   { <span class="tag-error">Validation failed</span> }
+          }
+        </div>
+      </div>
+
+      <div class="arrow">→</div>
+
+      <!-- FORGE -->
+      <div class="pipeline-card" [attr.data-status]="stageOf('forge').status">
+        <div class="card-header">
+          <span class="card-icon">⚒️</span>
+          <span class="card-label">Forge</span>
+          <span class="card-status-icon">
+            @switch (stageOf('forge').status) {
+              @case ('success') { ✅ }
+              @case ('error')   { ❌ }
+              @case ('running') { <span class="spinner-sm"></span> }
+              @default          { ○ }
+            }
+          </span>
+        </div>
+        <div class="card-sub">TDD loop · Branch · Commit</div>
+        <div class="card-status-text">
+          @switch (stageOf('forge').status) {
+            @case ('idle')    { <span class="muted">Not started</span> }
+            @case ('running') { <span class="muted-pulse">Building...</span> }
+            @case ('success') { <span class="tag-success">Branch pushed</span> }
+            @case ('error')   { <span class="tag-error">Build failed</span> }
+          }
+        </div>
+      </div>
+
+      <div class="arrow">→</div>
+
+      <!-- PARALLEL: GATE + SENTINEL + CONDUIT -->
+      <div class="parallel-group">
+        <div class="parallel-label">Parallel Quality Checks</div>
+        <div class="parallel-cards">
+
+          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('gate').status">
+            <div class="card-header">
+              <span class="card-icon">🧪</span>
+              <span class="card-label">Gate</span>
+              <span class="card-status-icon">
+                @switch (stageOf('gate').status) {
+                  @case ('success') { ✅ }  @case ('error') { ❌ }
+                  @case ('running') { <span class="spinner-sm"></span> }
+                  @default { ○ }
+                }
+              </span>
+            </div>
+            <div class="card-sub">Tests · AC pass/fail</div>
+            @if (stageOf('gate').output?.decision) {
+              <span [class]="decisionClass(stageOf('gate').output.decision)">
+                {{ stageOf('gate').output.decision }}
+                ({{ stageOf('gate').output.passed }}/{{ stageOf('gate').output.total }})
+              </span>
+            }
+          </div>
+
+          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('sentinel').status">
+            <div class="card-header">
+              <span class="card-icon">🛡️</span>
+              <span class="card-label">Sentinel</span>
+              <span class="card-status-icon">
+                @switch (stageOf('sentinel').status) {
+                  @case ('success') { ✅ }  @case ('error') { ❌ }
+                  @case ('running') { <span class="spinner-sm"></span> }
+                  @default { ○ }
+                }
+              </span>
+            </div>
+            <div class="card-sub">Security scan</div>
+            @if (stageOf('sentinel').output?.decision) {
+              <span [class]="decisionClass(stageOf('sentinel').output.decision)">
+                {{ stageOf('sentinel').output.decision }}
+              </span>
+            }
+          </div>
+
+          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('conduit').status">
+            <div class="card-header">
+              <span class="card-icon">🔁</span>
+              <span class="card-label">Conduit</span>
+              <span class="card-status-icon">
+                @switch (stageOf('conduit').status) {
+                  @case ('success') { ✅ }  @case ('error') { ❌ }
+                  @case ('running') { <span class="spinner-sm"></span> }
+                  @default { ○ }
+                }
+              </span>
+            </div>
+            <div class="card-sub">CI/CD review</div>
+            @if (stageOf('conduit').output?.decision) {
+              <span [class]="decisionClass(stageOf('conduit').output.decision)">
+                {{ stageOf('conduit').output.decision }}
+              </span>
+            }
+          </div>
+
+        </div>
+      </div>
+
+      <div class="arrow">→</div>
+
+      <!-- SCRIBE -->
+      <div class="pipeline-card" [attr.data-status]="stageOf('scribe').status">
+        <div class="card-header">
+          <span class="card-icon">📝</span>
+          <span class="card-label">Scribe</span>
+          <span class="card-status-icon">
+            @switch (stageOf('scribe').status) {
+              @case ('success') { ✅ }
+              @case ('error')   { ❌ }
+              @case ('running') { <span class="spinner-sm"></span> }
+              @default          { ○ }
+            }
+          </span>
+        </div>
+        <div class="card-sub">engineering.md · Jira closed</div>
+        @if (stageOf('scribe').output?.final_decision) {
+          <span [class]="decisionClass(stageOf('scribe').output.final_decision)">
+            {{ stageOf('scribe').output.final_decision }}
+          </span>
+        }
+      </div>
+
+    </section>
+
+    <!-- ── Result Blocks ────────────────────────────────────────────────────── -->
+
+    @if (stageOf('prime').output?.ticket_id) {
       <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('plan').status">
-          <span>📋 Plan — Jira Story</span>
+        <div class="result-header" [attr.data-status]="stageOf('prime').status">
+          <span>📋 Prime — Story Card</span>
+          <span class="result-meta">{{ stageOf('prime').output.ticket_id }}</span>
         </div>
         <div class="result-body">
           <div class="story-card">
-            <div class="story-id">{{ stageOf('plan').output?.id }}</div>
-            <div class="story-title">{{ stageOf('plan').output?.title }}</div>
-            <div class="story-desc">{{ stageOf('plan').output?.description }}</div>
-            @if (stageOf('plan').output?.acceptance_criteria?.length) {
+            <div class="story-id">{{ stageOf('prime').output.ticket_id }}</div>
+            <div class="story-title">{{ stageOf('prime').output.title }}</div>
+            <div class="story-meta">
+              Priority: {{ stageOf('prime').output.priority }} &nbsp;·&nbsp;
+              Points: {{ stageOf('prime').output.story_points }} &nbsp;·&nbsp;
+              Branch: <code>{{ stageOf('prime').output.branch_name }}</code>
+            </div>
+            @if (stageOf('prime').output.acceptance_criteria?.length) {
               <div class="criteria-label">Acceptance Criteria</div>
               <ul class="criteria-list">
-                @for (c of stageOf('plan').output.acceptance_criteria; track c) {
-                  <li class="criterion">✓ {{ c }}</li>
+                @for (ac of stageOf('prime').output.acceptance_criteria; track ac.id) {
+                  <li class="criterion"><strong>{{ ac.id }}</strong> — {{ ac.description }}</li>
                 }
               </ul>
             }
@@ -114,73 +283,36 @@
       </div>
     }
 
-    <!-- BUILD result -->
-    @if (stageOf('build').output) {
+    @if (stageOf('forge').output?.branch) {
       <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('build').status">
-          <span>🔨 Build — Generated API Code</span>
-          <span class="result-meta">generated_api.py</span>
-        </div>
-        <div class="result-body p-0">
-          <div class="code-toolbar">
-            <span class="code-lang">Python · FastAPI</span>
-          </div>
-          <pre class="code-block">{{ stageOf('build').output }}</pre>
-        </div>
-      </div>
-    }
-
-    <!-- CHECK result -->
-    @if (stageOf('check').output) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('check').status">
-          <span>🧪 Check — Test Results</span>
-          <span class="result-meta">
-            {{ stageOf('check').output?.passed ? 'All tests passed' : 'Tests failed' }}
-          </span>
-        </div>
-        <div class="result-body">
-          @if (stageOf('check').output?.checks) {
-            <div class="checks-grid">
-              @for (entry of checkEntries(stageOf('check').output.checks); track entry.key) {
-                <div class="check-item" [class.pass]="entry.pass" [class.fail]="!entry.pass">
-                  <span class="check-icon">{{ entry.pass ? '✅' : '❌' }}</span>
-                  <span class="check-key">{{ entry.key }}</span>
-                </div>
-              }
-            </div>
-          }
-          @if (stageOf('check').output?.response) {
-            <div class="sub-label">API Response</div>
-            <pre class="code-block code-block-sm">{{ formatJson(stageOf('check').output.response) }}</pre>
-          }
-          @if (stageOf('check').output?.stderr) {
-            <div class="sub-label error-label">Error</div>
-            <pre class="code-block code-block-sm error-block">{{ stageOf('check').output.stderr }}</pre>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- EVALUATE result -->
-    @if (stageOf('evaluate').output) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('evaluate').status">
-          <span>🚀 Evaluate — Git Commit</span>
+        <div class="result-header" [attr.data-status]="stageOf('forge').status">
+          <span>⚒️ Forge — Build Summary</span>
+          <span class="result-meta">{{ stageOf('forge').output.branch }}</span>
         </div>
         <div class="result-body">
           <div class="commit-card">
-            @if (stageOf('evaluate').output?.status === 'committed') {
-              <div class="commit-icon">✅</div>
-              <div class="commit-info">
-                <div class="commit-status">Committed successfully</div>
-                <div class="commit-message">"{{ stageOf('evaluate').output?.message }}"</div>
-              </div>
-            } @else {
-              <div class="commit-icon">⏭️</div>
-              <div class="commit-info">
-                <div class="commit-status skipped">{{ stageOf('evaluate').output?.status | titlecase }}</div>
-                <div class="commit-message">{{ stageOf('evaluate').output?.reason }}</div>
+            <div class="commit-icon">✅</div>
+            <div class="commit-info">
+              <div class="commit-message">"{{ stageOf('forge').output.commit_message }}"</div>
+              <div class="commit-status">{{ stageOf('forge').output.push_status }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (stageOf('gate').output?.ac_verdicts?.length) {
+      <div class="result-block">
+        <div class="result-header" [attr.data-status]="stageOf('gate').status">
+          <span>🧪 Gate — Test Results</span>
+          <span class="result-meta">{{ stageOf('gate').output.passed }}/{{ stageOf('gate').output.total }} ACs passed</span>
+        </div>
+        <div class="result-body">
+          <div class="checks-grid">
+            @for (v of stageOf('gate').output.ac_verdicts; track v.ac_id) {
+              <div class="check-item" [class.pass]="v.passed" [class.fail]="!v.passed">
+                <span class="check-icon">{{ v.passed ? '✅' : '❌' }}</span>
+                <span class="check-key">{{ v.ac_id }}</span>
               </div>
             }
           </div>
@@ -188,30 +320,74 @@
       </div>
     }
 
-    <!-- PUSH result -->
-    @if (stageOf('push').output) {
+    @if (stageOf('sentinel').output?.summary) {
       <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('push').status">
-          <span>📤 Push — GitHub</span>
-          <span class="result-meta">{{ stageOf('push').output?.url }}</span>
+        <div class="result-header" [attr.data-status]="stageOf('sentinel').status">
+          <span>🛡️ Sentinel — Security Scan</span>
+          <span class="result-meta" [class]="decisionClass(stageOf('sentinel').output.decision)">
+            {{ stageOf('sentinel').output.decision }}
+          </span>
+        </div>
+        <div class="result-body">
+          <p class="muted">{{ stageOf('sentinel').output.summary }}</p>
+          @if (stageOf('sentinel').output.findings?.length) {
+            <div class="checks-grid">
+              @for (f of stageOf('sentinel').output.findings; track f.detail) {
+                <div class="check-item fail">
+                  <span class="check-icon">⚠️</span>
+                  <span class="check-key">{{ f.type }} ({{ f.severity }}): {{ f.detail }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (stageOf('conduit').output?.checks?.length) {
+      <div class="result-block">
+        <div class="result-header" [attr.data-status]="stageOf('conduit').status">
+          <span>🔁 Conduit — CI/CD Review</span>
+          <span class="result-meta" [class]="decisionClass(stageOf('conduit').output.decision)">
+            {{ stageOf('conduit').output.decision }}
+          </span>
+        </div>
+        <div class="result-body">
+          <div class="checks-grid">
+            @for (c of stageOf('conduit').output.checks; track c.name) {
+              <div class="check-item"
+                   [class.pass]="c.status === 'PASS'"
+                   [class.fail]="c.status === 'FAIL'">
+                <span class="check-icon">{{ c.status === 'PASS' ? '✅' : c.status === 'WARN' ? '⚠️' : '❌' }}</span>
+                <span class="check-key">{{ c.name }}: {{ c.detail }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (stageOf('scribe').output?.final_decision) {
+      <div class="result-block">
+        <div class="result-header" [attr.data-status]="stageOf('scribe').status">
+          <span>📝 Scribe — Pipeline Complete</span>
+          <span class="result-meta" [class]="decisionClass(stageOf('scribe').output.final_decision)">
+            {{ stageOf('scribe').output.final_decision }}
+          </span>
         </div>
         <div class="result-body">
           <div class="commit-card">
-            @if (stageOf('push').output?.status === 'pushed') {
-              <div class="commit-icon">✅</div>
+            @if (stageOf('scribe').output.final_decision === 'SHIPPED') {
+              <div class="commit-icon">🚀</div>
               <div class="commit-info">
-                <div class="commit-status">Pushed to GitHub</div>
-                <div class="commit-message">
-                  Branch: {{ stageOf('push').output?.branch }} &nbsp;·&nbsp;
-                  Remote: {{ stageOf('push').output?.remote }}
-                </div>
-                <div class="commit-message">{{ stageOf('push').output?.url }}</div>
+                <div class="commit-status">Ticket closed · Branch ready for review</div>
+                <div class="commit-message">engineering.md written · Jira transitioned to Done</div>
               </div>
             } @else {
-              <div class="commit-icon">⏭️</div>
+              <div class="commit-icon">🚫</div>
               <div class="commit-info">
-                <div class="commit-status skipped">{{ stageOf('push').output?.status | titlecase }}</div>
-                <div class="commit-message">{{ stageOf('push').output?.reason }}</div>
+                <div class="commit-status skipped">Pipeline blocked — review required</div>
+                <div class="commit-message">Check Gate / Sentinel / Conduit results above</div>
               </div>
             }
           </div>

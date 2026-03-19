@@ -207,6 +207,104 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .commit-status.skipped { color: var(--muted); }
 .commit-message { font-size: 13px; color: #475569; margin-top: 4px; font-family: var(--mono); }
 
+/* ── Ticket Picker ───────────────────────────────────────────────────────── */
+.ticket-picker {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.picker-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.picker-title { font-weight: 600; font-size: 14px; }
+.btn-refresh {
+  padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); font-size: 12px; cursor: pointer; color: var(--text);
+}
+.btn-refresh:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+.picker-empty { padding: 20px; font-size: 14px; }
+.ticket-list { display: flex; flex-direction: column; }
+.ticket-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px; border: none; background: transparent;
+  cursor: pointer; text-align: left; border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.ticket-row:last-child { border-bottom: none; }
+.ticket-row:hover    { background: var(--surface2); }
+.ticket-row.selected { background: #eef2ff; border-left: 3px solid var(--accent); }
+.ticket-key   { font-family: var(--mono); font-size: 12px; font-weight: 700;
+                color: var(--accent); min-width: 60px; }
+.ticket-title { flex: 1; font-size: 14px; color: var(--text); }
+.ticket-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 10px;
+  border-radius: 20px; white-space: nowrap;
+}
+.badge-todo       { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.badge-inprogress { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.badge-done       { background: var(--success-bg); color: var(--success); border: 1px solid #bbf7d0; }
+
+/* ── Selected Ticket Banner ──────────────────────────────────────────────── */
+.selected-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  background: #eef2ff;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+.selected-left  { display: flex; align-items: center; gap: 12px; }
+.selected-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+                  color: var(--accent); font-weight: 700; }
+.selected-key   { font-family: var(--mono); font-weight: 700; color: var(--text);
+                  font-size: 15px; }
+.selected-title { font-size: 14px; color: #475569; }
+
+/* ── Parallel group (Gate + Sentinel + Conduit) ──────────────────────────── */
+.parallel-group {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 2;
+}
+.parallel-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted); padding: 0 4px;
+}
+.parallel-cards {
+  display: flex; gap: 10px; align-items: stretch; height: 100%;
+}
+.pipeline-card-sm {
+  flex: 1; padding: 12px 14px; font-size: 13px;
+}
+.pipeline-card-sm .card-label { font-size: 13px; }
+.card-sub {
+  font-size: 11px; color: var(--muted);
+}
+.card-status-text { font-size: 12px; }
+
+/* ── Ticket input ────────────────────────────────────────────────────────── */
+.ticket-input {
+  padding: 9px 14px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text); font-size: 14px; width: 200px;
+  outline: none; font-family: var(--mono);
+}
+.ticket-input:focus { border-color: var(--accent); }
+.ticket-input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Story meta ──────────────────────────────────────────────────────────── */
+.story-meta { font-size: 12px; color: var(--muted); }
+.story-meta code { color: var(--accent); background: #eef2ff; padding: 1px 6px; border-radius: 4px; }
+
+/* ── Warn tag ────────────────────────────────────────────────────────────── */
+.tag-warn { color: #d97706; font-weight: 600; }
+
+/* ── Parallel item (sidebar) ─────────────────────────────────────────────── */
+.parallel-item { border-left: 2px solid var(--border); margin-left: 8px; }
+
 /* ── Spinners ────────────────────────────────────────────────────────────── */
 @keyframes spin  { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }

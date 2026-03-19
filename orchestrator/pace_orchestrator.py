@@ -1,190 +1,183 @@
-from typing import TypedDict, List
-from langgraph.graph import StateGraph, END
-from jira.jira_reader import get_user_story
-from agents.builder_agent import build_code
-from agents.test_runner import run_tests
-from agents.devops_agent import commit_code, push_code
+"""
+PACE Orchestrator — LangGraph graph: PRIME → FORGE → [GATE + SENTINEL + CONDUIT] → SCRIBE
 
+The three quality agents run concurrently inside a single LangGraph node
+via ThreadPoolExecutor, then all results are merged before SCRIBE runs.
+
+Legacy run_pace() / stream_pace() without ticket_id kept for backward compatibility.
+"""
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Annotated, Any
+import operator
+
+from langgraph.graph import StateGraph, END
+from typing_extensions import TypedDict
+
+from agents.prime_agent import run_prime
+from agents.forge_agent import run_forge
+from agents.gate_agent import run_gate
+from agents.sentinel_agent import run_sentinel
+from agents.conduit_agent import run_conduit
+from agents.scribe_agent import run_scribe
+
+
+# ── State ─────────────────────────────────────────────────────────────────────
 
 class PACEState(TypedDict):
-    story: dict
-    generated_code: str
-    test_code: str
-    test_result: dict
-    commit_result: dict
-    push_result: dict
-    errors: List[str]
+    ticket_id: str
+    story_card: dict
+    story_card_path: str
+    branch_name: str
+    forge_result: dict
+    ac_results: list[dict]
+    gate_result: dict
+    sentinel_result: dict
+    conduit_result: dict
+    scribe_result: dict
+    pipeline_decision: str
+    errors: Annotated[list[str], operator.add]
 
 
-# ── Nodes ─────────────────────────────────────────────────────────────────────
-
-def plan_node(state: PACEState) -> PACEState:
-    """PLAN: Fetch the Jira user story."""
-    try:
-        story = get_user_story()
-        return {**state, "story": story}
-    except Exception as e:
-        return {**state, "errors": state["errors"] + [f"PLAN: {e}"]}
-
-
-def build_node(state: PACEState) -> PACEState:
-    """ACT: Generate FastAPI code from the story."""
-    if state["errors"]:
-        return state
-    try:
-        code = build_code(state["story"])
-        return {**state, "generated_code": code}
-    except Exception as e:
-        return {**state, "errors": state["errors"] + [f"BUILD: {e}"]}
+INITIAL_STATE: PACEState = {
+    "ticket_id": "",
+    "story_card": {},
+    "story_card_path": "",
+    "branch_name": "",
+    "forge_result": {},
+    "ac_results": [],
+    "gate_result": {},
+    "sentinel_result": {},
+    "conduit_result": {},
+    "scribe_result": {},
+    "pipeline_decision": "",
+    "errors": [],
+}
 
 
-def check_node(state: PACEState) -> PACEState:
-    """CHECK: Run tests against the generated API using TestClient."""
-    try:
-        test_result = run_tests()
-        return {**state, "test_result": test_result}
-    except Exception as e:
-        return {
-            **state,
-            "test_result": {"passed": False, "stderr": str(e)},
-            "errors": state["errors"] + [f"CHECK: {e}"]
+# ── Parallel quality node ─────────────────────────────────────────────────────
+
+def _parallel_node(state: PACEState) -> PACEState:
+    """Run GATE, SENTINEL, CONDUIT concurrently; merge results into state."""
+    gate_result = {}
+    sentinel_result = {}
+    conduit_result = {}
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(run_gate, state):     "gate",
+            executor.submit(run_sentinel, state): "sentinel",
+            executor.submit(run_conduit, state):  "conduit",
         }
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                result_state = future.result()
+                if name == "gate":
+                    gate_result = result_state.get("gate_result", _error_result("gate", "no result"))
+                elif name == "sentinel":
+                    sentinel_result = result_state.get("sentinel_result", _error_result("sentinel", "no result"))
+                elif name == "conduit":
+                    conduit_result = result_state.get("conduit_result", _error_result("conduit", "no result"))
+            except Exception as e:
+                if name == "gate":
+                    gate_result = _error_result("gate", str(e))
+                elif name == "sentinel":
+                    sentinel_result = _error_result("sentinel", str(e))
+                elif name == "conduit":
+                    conduit_result = _error_result("conduit", str(e))
+
+    return {
+        **state,
+        "gate_result": gate_result,
+        "sentinel_result": sentinel_result,
+        "conduit_result": conduit_result,
+    }
 
 
-def evaluate_node(state: PACEState) -> PACEState:
-    """EVALUATE: Commit if tests passed, skip otherwise."""
-    try:
-        test_passed = state.get("test_result", {}).get("passed", False)
-        if test_passed:
-            commit_result = commit_code()
-        else:
-            commit_result = {
-                "status": "skipped",
-                "reason": "tests did not pass",
-            }
-        return {**state, "commit_result": commit_result}
-    except Exception as e:
-        return {**state, "errors": state["errors"] + [f"EVALUATE: {e}"],
-                "commit_result": {"status": "error", "reason": str(e)}}
+def _error_result(name: str, reason: str) -> dict:
+    if name == "gate":
+        return {"decision": "HOLD", "ac_verdicts": [], "total": 0,
+                "passed": 0, "failed": 0, "error": reason}
+    if name == "sentinel":
+        return {"decision": "ADVISORY", "findings": [],
+                "summary": f"Agent error: {reason}"}
+    return {"decision": "ADVISORY", "checks": [],
+            "summary": f"Agent error: {reason}"}
 
 
-def push_node(state: PACEState) -> PACEState:
-    """PUSH: Push committed code to GitHub if commit succeeded."""
-    try:
-        commit_status = state.get("commit_result", {}).get("status")
-        if commit_status != "committed":
-            return {**state, "push_result": {
-                "status": "skipped",
-                "reason": f"commit was '{commit_status}', nothing to push"
-            }}
-        push_result = push_code()
-        return {**state, "push_result": push_result}
-    except Exception as e:
-        return {**state, "errors": state["errors"] + [f"PUSH: {e}"],
-                "push_result": {"status": "error", "reason": str(e)}}
+# ── Graph construction ────────────────────────────────────────────────────────
 
-
-# ── Graph ─────────────────────────────────────────────────────────────────────
-
-def build_graph():
+def build_pace_graph():
     graph = StateGraph(PACEState)
-
-    graph.add_node("plan",     plan_node)
-    graph.add_node("build",    build_node)
-    graph.add_node("check",    check_node)
-    graph.add_node("evaluate", evaluate_node)
-    graph.add_node("push",     push_node)
-
-    graph.set_entry_point("plan")
-    graph.add_edge("plan",     "build")
-    graph.add_edge("build",    "check")
-    graph.add_edge("check",    "evaluate")
-    graph.add_edge("evaluate", "push")
-    graph.add_edge("push",     END)
-
+    graph.add_node("prime",    run_prime)
+    graph.add_node("forge",    run_forge)
+    graph.add_node("parallel", _parallel_node)
+    graph.add_node("scribe",   run_scribe)
+    graph.set_entry_point("prime")
+    graph.add_edge("prime",    "forge")
+    graph.add_edge("forge",    "parallel")
+    graph.add_edge("parallel", "scribe")
+    graph.add_edge("scribe",   END)
     return graph.compile()
 
 
-def run_pace():
-    """Run the full PACE workflow using LangGraph (blocking)."""
-    graph = build_graph()
+# ── Public API ────────────────────────────────────────────────────────────────
 
-    initial_state: PACEState = {
-        "story": {},
-        "generated_code": "",
-        "test_code": "",
-        "test_result": {},
-        "commit_result": {},
-        "push_result": {},
-        "errors": []
-    }
-
-    final_state = graph.invoke(initial_state)
-
-    return {
-        "plan":     final_state["story"],
-        "act":      final_state["generated_code"],
-        "check":    final_state["test_result"],
-        "evaluate": final_state["commit_result"],
-        "push":     final_state["push_result"],
-        "errors":   final_state["errors"]
-    }
+def run_pace(ticket_id: str = "") -> dict:
+    """Blocking execution. Returns a summary dict."""
+    graph = build_pace_graph()
+    final = graph.invoke({**INITIAL_STATE, "ticket_id": ticket_id})
+    return _summarize(final)
 
 
-def stream_pace():
-    """Stream the PACE workflow node-by-node using LangGraph .stream()."""
-    graph = build_graph()
-
-    initial_state: PACEState = {
-        "story": {},
-        "generated_code": "",
-        "test_code": "",
-        "test_result": {},
-        "commit_result": {},
-        "push_result": {},
-        "errors": []
-    }
-
-    for chunk in graph.stream(initial_state):
+def stream_pace(ticket_id: str = ""):
+    """
+    Generator yielding SSE event dicts as each node completes.
+    The 'parallel' node emits three events: gate, sentinel, conduit.
+    """
+    graph = build_pace_graph()
+    for chunk in graph.stream({**INITIAL_STATE, "ticket_id": ticket_id}):
         node_name = list(chunk.keys())[0]
-        state = chunk[node_name]
+        node_state = chunk[node_name]
+        yield from _emit_events(node_name, node_state)
 
-        if node_name == "plan":
-            ok = bool(state.get("story"))
-            yield {
-                "stage":  "plan",
-                "status": "success" if ok else "error",
-                "output": state.get("story") or state.get("errors", [])
-            }
 
-        elif node_name == "build":
-            ok = bool(state.get("generated_code"))
-            yield {
-                "stage":  "build",
-                "status": "success" if ok else "error",
-                "output": state.get("generated_code") or state.get("errors", [])
-            }
+# ── SSE helpers ───────────────────────────────────────────────────────────────
 
-        elif node_name == "check":
-            result = state.get("test_result", {})
-            yield {
-                "stage":  "check",
-                "status": "success" if result.get("passed") else "error",
-                "output": result
-            }
+def _emit_events(node_name: str, state: dict):
+    errors = state.get("errors", [])
+    if node_name == "prime":
+        yield _event("prime", state.get("story_card"), errors)
+    elif node_name == "forge":
+        yield _event("forge", state.get("forge_result"), errors)
+    elif node_name == "parallel":
+        yield _event("gate",     state.get("gate_result"),     errors)
+        yield _event("sentinel", state.get("sentinel_result"), errors)
+        yield _event("conduit",  state.get("conduit_result"),  errors)
+    elif node_name == "scribe":
+        yield _event("scribe", state.get("scribe_result"), errors)
 
-        elif node_name == "evaluate":
-            result = state.get("commit_result", {})
-            yield {
-                "stage":  "evaluate",
-                "status": "success" if result.get("status") == "committed" else "error",
-                "output": result
-            }
 
-        elif node_name == "push":
-            result = state.get("push_result", {})
-            yield {
-                "stage":  "push",
-                "status": "success" if result.get("status") == "pushed" else "error",
-                "output": result
-            }
+def _event(stage: str, output: Any, errors: list) -> dict:
+    return {
+        "stage":  stage,
+        "status": "error" if errors else "success",
+        "output": output or {},
+        "errors": errors,
+    }
+
+
+def _summarize(state: dict) -> dict:
+    return {
+        "ticket_id":         state.get("ticket_id"),
+        "pipeline_decision": state.get("scribe_result", {}).get("final_decision", "UNKNOWN"),
+        "branch_name":       state.get("branch_name"),
+        "gate":              state.get("gate_result", {}).get("decision"),
+        "sentinel":          state.get("sentinel_result", {}).get("decision"),
+        "conduit":           state.get("conduit_result", {}).get("decision"),
+        "ac_results":        state.get("ac_results", []),
+        "errors":            state.get("errors", []),
+        "engineering_md":    state.get("scribe_result", {}).get("engineering_md_path"),
+    }

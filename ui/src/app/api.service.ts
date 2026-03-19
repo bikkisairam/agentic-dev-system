@@ -12,27 +12,24 @@ export class ApiService {
     return this.http.get(`${BASE}/`);
   }
 
-  getStory(): Observable<any> {
-    return this.http.get(`${BASE}/jira-story`);
+  getStory(ticketId: string = 'JIRA-101'): Observable<any> {
+    return this.http.get(`${BASE}/jira-story`, { params: { ticket_id: ticketId } });
   }
 
-  build(): Observable<any> {
-    return this.http.post(`${BASE}/build`, {});
+  getTickets(): Observable<any> {
+    return this.http.get(`${BASE}/jira/tickets`);
   }
 
-  test(): Observable<any> {
-    return this.http.post(`${BASE}/test`, {});
+  // New PACE pipeline
+  paceRun(ticketId: string): Observable<any> {
+    return this.http.post(`${BASE}/pace/run`, {}, { params: { ticket_id: ticketId } });
   }
 
-  commit(): Observable<any> {
-    return this.http.post(`${BASE}/commit`, {});
+  paceStreamUrl(ticketId: string): string {
+    return `${BASE}/pace/stream?ticket_id=${encodeURIComponent(ticketId)}`;
   }
 
-  push(): Observable<any> {
-    return this.http.post(`${BASE}/push`, {});
-  }
-
-  runPace(): Observable<any> {
-    return this.http.post(`${BASE}/run`, {});
+  paceStatus(): Observable<any> {
+    return this.http.get(`${BASE}/pace/status`);
   }
 }

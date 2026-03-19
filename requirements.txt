@@ -5,3 +5,6 @@ langgraph
 gitpython
 requests
 pytest
+pyyaml
+python-slugify
+typing-extensions
