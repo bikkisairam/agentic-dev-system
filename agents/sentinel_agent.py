@@ -6,9 +6,7 @@ Returns SHIP, HOLD, or ADVISORY with a findings list.
 import os
 import re
 import json
-import ollama
-
-LLM_MODEL = "codellama"
+import llm_client
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SENTINEL_PROMPT = """\
@@ -77,8 +75,7 @@ def run_sentinel(state: dict) -> dict:
 def _scan_code(code: str) -> dict:
     prompt = SENTINEL_PROMPT.format(code=code[:8000])  # cap at 8 KB
     try:
-        resp = ollama.chat(model=LLM_MODEL, messages=[{"role": "user", "content": prompt}])
-        raw = resp["message"]["content"].strip()
+        raw = llm_client.chat(prompt, system="You are a security code reviewer. Output only valid JSON.").strip()
         # Strip markdown fences
         raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
         raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)

@@ -4,11 +4,10 @@ transitions the ticket to In Progress, and adds the pace-in-progress label.
 """
 import re
 import yaml
-import ollama
+import llm_client
 from jira.jira_client import get_ticket, post_comment, transition_ticket, add_label
 
 STORY_CARD_PATH = "story-card.yaml"
-LLM_MODEL = "codellama"
 
 PRIME_PROMPT = """\
 You are a software project manager. Convert the following Jira ticket into a structured YAML story card.
@@ -118,11 +117,7 @@ def _generate_story_card(ticket: dict) -> dict:
         branch_slug=branch_slug,
     )
     try:
-        resp = ollama.chat(
-            model=LLM_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = resp["message"]["content"].strip()
+        raw = llm_client.chat(prompt, system="You are a software project manager. Output only valid YAML.").strip()
         # Strip markdown fences if present
         raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
         raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)

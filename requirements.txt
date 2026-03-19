@@ -8,3 +8,4 @@ pytest
 pyyaml
 python-slugify
 typing-extensions
+anthropic

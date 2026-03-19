@@ -8,10 +8,8 @@ import re
 import subprocess
 import yaml
 import git
-import ollama
+import llm_client
 from jira.jira_client import post_comment
-
-LLM_MODEL = "codellama"
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_TDD_ATTEMPTS = 3
 
@@ -214,9 +212,7 @@ def _refactor(slug: str) -> None:
 
 
 def _llm(prompt: str) -> str:
-    resp = ollama.chat(model=LLM_MODEL, messages=[{"role": "user", "content": prompt}])
-    raw = resp["message"]["content"].strip()
-    # Strip markdown fences
+    raw = llm_client.chat(prompt, system="You are an expert Python engineer. Output only valid Python code, no markdown fences, no explanations.").strip()
     raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
     raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)
     return raw.strip()

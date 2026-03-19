@@ -1,300 +1,433 @@
 <div class="shell">
 
-  <!-- Sidebar -->
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
   <aside class="sidebar">
-    <div class="logo">
-      <span class="logo-icon">⚙️</span>
+
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8L6 5L9 8L13 4" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 12L6 9L9 12L13 8.5" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+        </svg>
+      </div>
       <span class="logo-text">AgentDev</span>
     </div>
 
-    <div class="server-badge"
-         [class.online]="serverOnline() === true"
-         [class.offline]="serverOnline() === false">
-      <span class="dot"></span>
-      {{ serverOnline() === true ? 'API Online' : serverOnline() === false ? 'API Offline' : 'Checking...' }}
+    <div class="server-pill"
+         [class.pill-online]="serverOnline() === true"
+         [class.pill-offline]="serverOnline() === false">
+      <span class="pill-dot"></span>
+      {{ serverOnline() === true ? 'API Online' : serverOnline() === false ? 'API Offline' : 'Connecting…' }}
     </div>
 
-    <nav class="nav">
-      @for (stage of stages(); track stage.id) {
-        <div class="nav-item"
-             [class.success]="stage.status === 'success'"
-             [class.error]="stage.status === 'error'"
-             [class.running]="stage.status === 'running'"
-             [class.parallel-item]="stage.parallel">
-          <span class="nav-icon">{{ stage.icon }}</span>
-          <span class="nav-label">{{ stage.label }}</span>
-          <span class="status-dot" [attr.data-status]="stage.status"></span>
-        </div>
-      }
-    </nav>
+    <div class="nav-section">
+      <div class="nav-section-label">Pipeline</div>
+      <nav class="stage-nav">
+        @for (stage of stages(); track stage.id) {
+          <div class="nav-stage"
+               [attr.data-stage]="stage.id"
+               [attr.data-status]="stage.status"
+               [class.nav-stage-parallel]="stage.parallel">
+            <span class="nav-stage-icon">{{ stage.icon }}</span>
+            <span class="nav-stage-name">{{ stage.label }}</span>
+            @if (stage.parallel) {
+              <span class="nav-parallel-badge">∥</span>
+            }
+            <span class="nav-stage-dot" [attr.data-status]="stage.status"></span>
+          </div>
+        }
+      </nav>
+    </div>
 
     <div class="sidebar-footer">
-      <div class="progress-label">Pipeline Progress</div>
-      <div class="progress-bar">
-        <div class="progress-fill" [style.width.%]="(completedCount / totalStages) * 100"></div>
+      <div class="sidebar-progress-label">
+        <span>Progress</span>
+        <span class="sidebar-progress-count">{{ completedCount }}/{{ totalStages }}</span>
       </div>
-      <div class="progress-count">{{ completedCount }}/{{ totalStages }} stages</div>
+      <div class="sidebar-progress-track">
+        <div class="sidebar-progress-fill" [style.width.%]="(completedCount / totalStages) * 100"></div>
+      </div>
     </div>
+
   </aside>
 
-  <!-- Main -->
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
   <main class="main">
 
-    <!-- Top Bar -->
+    <!-- Topbar -->
     <header class="topbar">
-      <div class="topbar-title">
-        <h1>PACE Pipeline</h1>
-        <p>Prime · Forge · Gate · Sentinel · Conduit · Scribe</p>
+      <div>
+        <h1 class="topbar-title">PACE Pipeline</h1>
+        <p class="topbar-subtitle">Prime · Forge · Gate · Sentinel · Conduit · Scribe</p>
       </div>
-      <div class="topbar-actions">
-        <button class="btn-secondary" (click)="resetStages()" [disabled]="pipelineRunning()">Reset</button>
+      <div class="topbar-right">
+
+        <button class="btn-ghost" (click)="loadTickets()" [disabled]="ticketsLoading()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+          </svg>
+          {{ ticketsLoading() ? 'Loading…' : 'Refresh' }}
+        </button>
+
+        <button class="btn-ghost" (click)="showSettings.set(!showSettings())" title="LLM Settings">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          {{ currentProvider.label }}
+          <span class="key-badge" [class.key-ok]="settingsApiKeySet()" [class.key-missing]="!settingsApiKeySet()"></span>
+        </button>
+
+        <button class="btn-outline" (click)="resetStages()" [disabled]="pipelineRunning()">
+          Reset
+        </button>
+
         <button class="btn-primary" (click)="runFullPipeline()"
                 [disabled]="pipelineRunning() || !selectedTicket()">
           @if (pipelineRunning()) {
-            <span class="spinner"></span> Running...
+            <span class="btn-spinner"></span>Running…
           } @else {
-            ▶ Run Pipeline
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+            Run Pipeline
           }
         </button>
+
       </div>
     </header>
 
-    <!-- ── Ticket Picker ────────────────────────────────────────────────────── -->
-    <section class="ticket-picker">
-      <div class="picker-header">
-        <span class="picker-title">Jira Tickets — Project AA</span>
-        <button class="btn-refresh" (click)="loadTickets()" [disabled]="ticketsLoading()">
-          {{ ticketsLoading() ? 'Loading...' : '↻ Refresh' }}
-        </button>
-      </div>
-
-      @if (ticketsLoading()) {
-        <div class="picker-empty muted">Fetching tickets from Jira...</div>
-      } @else if (tickets().length === 0) {
-        <div class="picker-empty muted">No tickets found in project AA.</div>
-      } @else {
-        <div class="ticket-list">
-          @for (ticket of tickets(); track ticket.id) {
-            <button class="ticket-row"
-                    [class.selected]="selectedTicket()?.id === ticket.id"
-                    (click)="selectTicket(ticket)">
-              <span class="ticket-key">{{ ticket.id }}</span>
-              <span class="ticket-title">{{ ticket.title }}</span>
-              <span class="ticket-badge" [class]="statusBadge(ticket.status)">{{ ticket.status }}</span>
-            </button>
-          }
-        </div>
-      }
-    </section>
-
-    <!-- ── Selected Ticket Banner ──────────────────────────────────────────── -->
+    <!-- Selected ticket banner -->
     @if (selectedTicket()) {
       <div class="selected-banner">
-        <div class="selected-left">
-          <span class="selected-label">Selected ticket</span>
-          <span class="selected-key">{{ selectedTicket()!.id }}</span>
-          <span class="selected-title">{{ selectedTicket()!.title }}</span>
-        </div>
+        <span class="selected-label">Selected</span>
+        <code class="selected-id">{{ selectedTicket()!.id }}</code>
+        <span class="selected-title">{{ selectedTicket()!.title }}</span>
         <span class="ticket-badge" [class]="statusBadge(selectedTicket()!.status)">
           {{ selectedTicket()!.status }}
         </span>
       </div>
     }
 
-    <!-- ── Pipeline Flow ────────────────────────────────────────────────────── -->
-    <section class="pipeline-section">
-
-      <!-- PRIME -->
-      <div class="pipeline-card" [attr.data-status]="stageOf('prime').status">
-        <div class="card-header">
-          <span class="card-icon">📋</span>
-          <span class="card-label">Prime</span>
-          <span class="card-status-icon">
-            @switch (stageOf('prime').status) {
-              @case ('success') { ✅ }
-              @case ('error')   { ❌ }
-              @case ('running') { <span class="spinner-sm"></span> }
-              @default          { ○ }
-            }
-          </span>
+    <!-- Settings card -->
+    @if (showSettings()) {
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            LLM Provider
+          </div>
+          <button class="settings-close" (click)="showSettings.set(false)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
-        <div class="card-sub">Validates ticket · Generates story card</div>
-        <div class="card-status-text">
-          @switch (stageOf('prime').status) {
-            @case ('idle')    { <span class="muted">Not started</span> }
-            @case ('running') { <span class="muted-pulse">Validating...</span> }
-            @case ('success') { <span class="tag-success">Story card ready</span> }
-            @case ('error')   { <span class="tag-error">Validation failed</span> }
+        <div class="settings-card-body">
+          <div class="settings-field">
+            <label class="settings-field-label">Provider</label>
+            <div class="provider-grid">
+              @for (p of providers; track p.value) {
+                <button class="provider-option"
+                        [class.provider-active]="settingsProvider() === p.value"
+                        (click)="settingsProvider.set(p.value)">
+                  {{ p.label }}
+                </button>
+              }
+            </div>
+          </div>
+          @if (currentProvider.value !== 'ollama') {
+            <div class="settings-field">
+              <label class="settings-field-label">
+                API Key
+                @if (settingsApiKeySet()) {
+                  <span class="key-saved-tag">✓ saved</span>
+                } @else {
+                  <span class="key-unset-tag">not set</span>
+                }
+              </label>
+              <input class="settings-input"
+                     type="password"
+                     [placeholder]="currentProvider.placeholder"
+                     [(ngModel)]="settingsApiKey" />
+            </div>
           }
-        </div>
-      </div>
-
-      <div class="arrow">→</div>
-
-      <!-- FORGE -->
-      <div class="pipeline-card" [attr.data-status]="stageOf('forge').status">
-        <div class="card-header">
-          <span class="card-icon">⚒️</span>
-          <span class="card-label">Forge</span>
-          <span class="card-status-icon">
-            @switch (stageOf('forge').status) {
-              @case ('success') { ✅ }
-              @case ('error')   { ❌ }
-              @case ('running') { <span class="spinner-sm"></span> }
-              @default          { ○ }
+          <div class="settings-actions">
+            @if (settingsSaved()) {
+              <span class="saved-confirm">Saved successfully</span>
             }
-          </span>
-        </div>
-        <div class="card-sub">TDD loop · Branch · Commit</div>
-        <div class="card-status-text">
-          @switch (stageOf('forge').status) {
-            @case ('idle')    { <span class="muted">Not started</span> }
-            @case ('running') { <span class="muted-pulse">Building...</span> }
-            @case ('success') { <span class="tag-success">Branch pushed</span> }
-            @case ('error')   { <span class="tag-error">Build failed</span> }
-          }
-        </div>
-      </div>
-
-      <div class="arrow">→</div>
-
-      <!-- PARALLEL: GATE + SENTINEL + CONDUIT -->
-      <div class="parallel-group">
-        <div class="parallel-label">Parallel Quality Checks</div>
-        <div class="parallel-cards">
-
-          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('gate').status">
-            <div class="card-header">
-              <span class="card-icon">🧪</span>
-              <span class="card-label">Gate</span>
-              <span class="card-status-icon">
-                @switch (stageOf('gate').status) {
-                  @case ('success') { ✅ }  @case ('error') { ❌ }
-                  @case ('running') { <span class="spinner-sm"></span> }
-                  @default { ○ }
-                }
-              </span>
-            </div>
-            <div class="card-sub">Tests · AC pass/fail</div>
-            @if (stageOf('gate').output?.decision) {
-              <span [class]="decisionClass(stageOf('gate').output.decision)">
-                {{ stageOf('gate').output.decision }}
-                ({{ stageOf('gate').output.passed }}/{{ stageOf('gate').output.total }})
-              </span>
-            }
-          </div>
-
-          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('sentinel').status">
-            <div class="card-header">
-              <span class="card-icon">🛡️</span>
-              <span class="card-label">Sentinel</span>
-              <span class="card-status-icon">
-                @switch (stageOf('sentinel').status) {
-                  @case ('success') { ✅ }  @case ('error') { ❌ }
-                  @case ('running') { <span class="spinner-sm"></span> }
-                  @default { ○ }
-                }
-              </span>
-            </div>
-            <div class="card-sub">Security scan</div>
-            @if (stageOf('sentinel').output?.decision) {
-              <span [class]="decisionClass(stageOf('sentinel').output.decision)">
-                {{ stageOf('sentinel').output.decision }}
-              </span>
-            }
-          </div>
-
-          <div class="pipeline-card pipeline-card-sm" [attr.data-status]="stageOf('conduit').status">
-            <div class="card-header">
-              <span class="card-icon">🔁</span>
-              <span class="card-label">Conduit</span>
-              <span class="card-status-icon">
-                @switch (stageOf('conduit').status) {
-                  @case ('success') { ✅ }  @case ('error') { ❌ }
-                  @case ('running') { <span class="spinner-sm"></span> }
-                  @default { ○ }
-                }
-              </span>
-            </div>
-            <div class="card-sub">CI/CD review</div>
-            @if (stageOf('conduit').output?.decision) {
-              <span [class]="decisionClass(stageOf('conduit').output.decision)">
-                {{ stageOf('conduit').output.decision }}
-              </span>
-            }
-          </div>
-
-        </div>
-      </div>
-
-      <div class="arrow">→</div>
-
-      <!-- SCRIBE -->
-      <div class="pipeline-card" [attr.data-status]="stageOf('scribe').status">
-        <div class="card-header">
-          <span class="card-icon">📝</span>
-          <span class="card-label">Scribe</span>
-          <span class="card-status-icon">
-            @switch (stageOf('scribe').status) {
-              @case ('success') { ✅ }
-              @case ('error')   { ❌ }
-              @case ('running') { <span class="spinner-sm"></span> }
-              @default          { ○ }
-            }
-          </span>
-        </div>
-        <div class="card-sub">engineering.md · Jira closed</div>
-        @if (stageOf('scribe').output?.final_decision) {
-          <span [class]="decisionClass(stageOf('scribe').output.final_decision)">
-            {{ stageOf('scribe').output.final_decision }}
-          </span>
-        }
-      </div>
-
-    </section>
-
-    <!-- ── Result Blocks ────────────────────────────────────────────────────── -->
-
-    @if (stageOf('prime').output?.ticket_id) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('prime').status">
-          <span>📋 Prime — Story Card</span>
-          <span class="result-meta">{{ stageOf('prime').output.ticket_id }}</span>
-        </div>
-        <div class="result-body">
-          <div class="story-card">
-            <div class="story-id">{{ stageOf('prime').output.ticket_id }}</div>
-            <div class="story-title">{{ stageOf('prime').output.title }}</div>
-            <div class="story-meta">
-              Priority: {{ stageOf('prime').output.priority }} &nbsp;·&nbsp;
-              Points: {{ stageOf('prime').output.story_points }} &nbsp;·&nbsp;
-              Branch: <code>{{ stageOf('prime').output.branch_name }}</code>
-            </div>
-            @if (stageOf('prime').output.acceptance_criteria?.length) {
-              <div class="criteria-label">Acceptance Criteria</div>
-              <ul class="criteria-list">
-                @for (ac of stageOf('prime').output.acceptance_criteria; track ac.id) {
-                  <li class="criterion"><strong>{{ ac.id }}</strong> — {{ ac.description }}</li>
-                }
-              </ul>
-            }
+            <button class="btn-primary" (click)="saveLLMSettings()">Save</button>
           </div>
         </div>
       </div>
     }
 
-    @if (stageOf('forge').output?.branch) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('forge').status">
-          <span>⚒️ Forge — Build Summary</span>
-          <span class="result-meta">{{ stageOf('forge').output.branch }}</span>
+    <!-- ── Pipeline Board ────────────────────────────────────────────────── -->
+    <section class="board-card">
+      <div class="board-scroll">
+
+        <!-- Column headers -->
+        <div class="board-head">
+
+          <div class="bh-ticket">Ticket</div>
+          <div class="bh-arrow"></div>
+
+          <div class="bh-stage" data-stage="prime">
+            <div class="stage-icon-wrap">📋</div>
+            <div class="stage-col-name">Prime</div>
+            <div class="stage-col-role">Plan</div>
+            <div class="stage-col-desc">Validates · Story card</div>
+          </div>
+
+          <div class="bh-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M14 6l6 6-6 6"/>
+            </svg>
+          </div>
+
+          <div class="bh-stage" data-stage="forge">
+            <div class="stage-icon-wrap">⚒️</div>
+            <div class="stage-col-name">Forge</div>
+            <div class="stage-col-role">Code</div>
+            <div class="stage-col-desc">TDD · Branch · Commit</div>
+          </div>
+
+          <div class="bh-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M14 6l6 6-6 6"/>
+            </svg>
+          </div>
+
+          <!-- Parallel group -->
+          <div class="bh-parallel">
+            <div class="parallel-header-label">Parallel Quality Checks</div>
+            <div class="parallel-header-stages">
+              <div class="bh-stage" data-stage="gate">
+                <div class="stage-icon-wrap">🧪</div>
+                <div class="stage-col-name">Gate</div>
+                <div class="stage-col-role">Quality</div>
+                <div class="stage-col-desc">Tests · AC pass/fail</div>
+              </div>
+              <div class="bh-stage" data-stage="sentinel">
+                <div class="stage-icon-wrap">🛡️</div>
+                <div class="stage-col-name">Sentinel</div>
+                <div class="stage-col-role">Security</div>
+                <div class="stage-col-desc">Security scan</div>
+              </div>
+              <div class="bh-stage" data-stage="conduit">
+                <div class="stage-icon-wrap">🔁</div>
+                <div class="stage-col-name">Conduit</div>
+                <div class="stage-col-role">DevOps</div>
+                <div class="stage-col-desc">CI/CD review</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bh-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M14 6l6 6-6 6"/>
+            </svg>
+          </div>
+
+          <div class="bh-stage" data-stage="scribe">
+            <div class="stage-icon-wrap">📝</div>
+            <div class="stage-col-name">Scribe</div>
+            <div class="stage-col-role">Report</div>
+            <div class="stage-col-desc">Docs · Jira closed</div>
+          </div>
+
         </div>
-        <div class="result-body">
-          <div class="commit-card">
-            <div class="commit-icon">✅</div>
-            <div class="commit-info">
+        <!-- /board-head -->
+
+        <!-- Ticket rows -->
+        @if (ticketsLoading()) {
+          <div class="board-empty">
+            <div class="board-empty-spinner"></div>
+            <span>Fetching tickets from Jira…</span>
+          </div>
+        } @else if (tickets().length === 0) {
+          <div class="board-empty">
+            No tickets found. Click Refresh to load from Jira.
+          </div>
+        } @else {
+          @for (ticket of tickets(); track ticket.id) {
+            <div class="board-row"
+                 [class.row-selected]="selectedTicket()?.id === ticket.id"
+                 [class.row-running]="pipelineRunning() && selectedTicket()?.id === ticket.id"
+                 (click)="selectTicket(ticket)">
+
+              <div class="br-ticket">
+                <div class="br-ticket-id">{{ ticket.id }}</div>
+                <div class="br-ticket-title">{{ ticket.title }}</div>
+                <span class="priority-badge pri-{{ ticket.priority.toLowerCase() }}">{{ ticket.priority }}</span>
+              </div>
+
+              <div class="br-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M14 6l6 6-6 6"/>
+                </svg>
+              </div>
+
+              <!-- Prime -->
+              <div class="br-stage" data-stage="prime">
+                <div class="stage-track">
+                  <div class="track-line"></div>
+                  <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'prime').status"></div>
+                  <div class="track-line"></div>
+                </div>
+                @let sl0 = getShipHold(ticket.id, 'prime');
+                @if (sl0) {
+                  <span class="result-pill" [class.pill-ship]="sl0 === 'ship'" [class.pill-hold]="sl0 === 'hold'">{{ sl0 }}</span>
+                }
+              </div>
+
+              <div class="br-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M14 6l6 6-6 6"/>
+                </svg>
+              </div>
+
+              <!-- Forge -->
+              <div class="br-stage" data-stage="forge">
+                <div class="stage-track">
+                  <div class="track-line"></div>
+                  <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'forge').status"></div>
+                  <div class="track-line"></div>
+                </div>
+                @let sl1 = getShipHold(ticket.id, 'forge');
+                @if (sl1) {
+                  <span class="result-pill" [class.pill-ship]="sl1 === 'ship'" [class.pill-hold]="sl1 === 'hold'">{{ sl1 }}</span>
+                }
+              </div>
+
+              <div class="br-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M14 6l6 6-6 6"/>
+                </svg>
+              </div>
+
+              <!-- Parallel: Gate · Sentinel · Conduit -->
+              <div class="br-parallel">
+
+                <div class="br-stage" data-stage="gate">
+                  <div class="stage-track">
+                    <div class="track-line"></div>
+                    <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'gate').status"></div>
+                    <div class="track-line"></div>
+                  </div>
+                  @let sl2 = getShipHold(ticket.id, 'gate');
+                  @if (sl2) {
+                    <span class="result-pill" [class.pill-ship]="sl2 === 'ship'" [class.pill-hold]="sl2 === 'hold'">{{ sl2 }}</span>
+                  }
+                </div>
+
+                <div class="br-stage" data-stage="sentinel">
+                  <div class="stage-track">
+                    <div class="track-line"></div>
+                    <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'sentinel').status"></div>
+                    <div class="track-line"></div>
+                  </div>
+                  @let sl3 = getShipHold(ticket.id, 'sentinel');
+                  @if (sl3) {
+                    <span class="result-pill" [class.pill-ship]="sl3 === 'ship'" [class.pill-hold]="sl3 === 'hold'">{{ sl3 }}</span>
+                  }
+                </div>
+
+                <div class="br-stage" data-stage="conduit">
+                  <div class="stage-track">
+                    <div class="track-line"></div>
+                    <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'conduit').status"></div>
+                    <div class="track-line"></div>
+                  </div>
+                  @let sl4 = getShipHold(ticket.id, 'conduit');
+                  @if (sl4) {
+                    <span class="result-pill" [class.pill-ship]="sl4 === 'ship'" [class.pill-hold]="sl4 === 'hold'">{{ sl4 }}</span>
+                  }
+                </div>
+
+              </div>
+
+              <div class="br-arrow">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M14 6l6 6-6 6"/>
+                </svg>
+              </div>
+
+              <!-- Scribe -->
+              <div class="br-stage" data-stage="scribe">
+                <div class="stage-track">
+                  <div class="track-line"></div>
+                  <div class="stage-dot" [attr.data-status]="stageOfTicket(ticket.id, 'scribe').status"></div>
+                  <div class="track-line"></div>
+                </div>
+                @let sl5 = getShipHold(ticket.id, 'scribe');
+                @if (sl5) {
+                  <span class="result-pill" [class.pill-ship]="sl5 === 'ship'" [class.pill-hold]="sl5 === 'hold'">{{ sl5 }}</span>
+                }
+              </div>
+
+            </div>
+          }
+        }
+
+      </div>
+    </section>
+
+    <!-- ── Result Cards ──────────────────────────────────────────────────── -->
+
+    @if (stageOf('prime').output?.ticket_id) {
+      <div class="result-card" data-stage="prime">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('prime').status"></span>
+            Prime — Story Card
+          </div>
+          <code class="result-card-meta">{{ stageOf('prime').output.ticket_id }}</code>
+        </div>
+        <div class="result-card-body">
+          <div class="story-id-badge">{{ stageOf('prime').output.ticket_id }}</div>
+          <div class="story-title">{{ stageOf('prime').output.title }}</div>
+          <div class="story-meta">
+            <span class="meta-chip">Priority: {{ stageOf('prime').output.priority }}</span>
+            <span class="meta-chip">Points: {{ stageOf('prime').output.story_points }}</span>
+            <code class="meta-branch">{{ stageOf('prime').output.branch_name }}</code>
+          </div>
+          @if (stageOf('prime').output.acceptance_criteria?.length) {
+            <div class="ac-section">
+              <div class="ac-label">Acceptance Criteria</div>
+              <div class="ac-list">
+                @for (ac of stageOf('prime').output.acceptance_criteria; track ac.id) {
+                  <div class="ac-item">
+                    <span class="ac-id">{{ ac.id }}</span>
+                    <span class="ac-desc">{{ ac.description }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (stageOf('forge').output?.branch) {
+      <div class="result-card" data-stage="forge">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('forge').status"></span>
+            Forge — Build Summary
+          </div>
+          <code class="result-card-meta">{{ stageOf('forge').output.branch }}</code>
+        </div>
+        <div class="result-card-body">
+          <div class="commit-row">
+            <div class="commit-status-icon">✓</div>
+            <div>
               <div class="commit-message">"{{ stageOf('forge').output.commit_message }}"</div>
-              <div class="commit-status">{{ stageOf('forge').output.push_status }}</div>
+              <div class="commit-push-status">{{ stageOf('forge').output.push_status }}</div>
             </div>
           </div>
         </div>
@@ -302,17 +435,20 @@
     }
 
     @if (stageOf('gate').output?.ac_verdicts?.length) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('gate').status">
-          <span>🧪 Gate — Test Results</span>
-          <span class="result-meta">{{ stageOf('gate').output.passed }}/{{ stageOf('gate').output.total }} ACs passed</span>
+      <div class="result-card" data-stage="gate">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('gate').status"></span>
+            Gate — Test Results
+          </div>
+          <code class="result-card-meta">{{ stageOf('gate').output.passed }}/{{ stageOf('gate').output.total }} passed</code>
         </div>
-        <div class="result-body">
-          <div class="checks-grid">
+        <div class="result-card-body">
+          <div class="check-grid">
             @for (v of stageOf('gate').output.ac_verdicts; track v.ac_id) {
-              <div class="check-item" [class.pass]="v.passed" [class.fail]="!v.passed">
-                <span class="check-icon">{{ v.passed ? '✅' : '❌' }}</span>
-                <span class="check-key">{{ v.ac_id }}</span>
+              <div class="check-chip" [class.check-pass]="v.passed" [class.check-fail]="!v.passed">
+                <span>{{ v.passed ? '✓' : '✗' }}</span>
+                <span class="check-id">{{ v.ac_id }}</span>
               </div>
             }
           </div>
@@ -321,21 +457,24 @@
     }
 
     @if (stageOf('sentinel').output?.summary) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('sentinel').status">
-          <span>🛡️ Sentinel — Security Scan</span>
-          <span class="result-meta" [class]="decisionClass(stageOf('sentinel').output.decision)">
+      <div class="result-card" data-stage="sentinel">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('sentinel').status"></span>
+            Sentinel — Security Scan
+          </div>
+          <span class="decision-tag" [class]="decisionClass(stageOf('sentinel').output.decision)">
             {{ stageOf('sentinel').output.decision }}
           </span>
         </div>
-        <div class="result-body">
-          <p class="muted">{{ stageOf('sentinel').output.summary }}</p>
+        <div class="result-card-body">
+          <p class="result-summary">{{ stageOf('sentinel').output.summary }}</p>
           @if (stageOf('sentinel').output.findings?.length) {
-            <div class="checks-grid">
+            <div class="check-grid">
               @for (f of stageOf('sentinel').output.findings; track f.detail) {
-                <div class="check-item fail">
-                  <span class="check-icon">⚠️</span>
-                  <span class="check-key">{{ f.type }} ({{ f.severity }}): {{ f.detail }}</span>
+                <div class="check-chip check-fail">
+                  <span>⚠</span>
+                  <span class="check-id">{{ f.type }} ({{ f.severity }}): {{ f.detail }}</span>
                 </div>
               }
             </div>
@@ -345,21 +484,25 @@
     }
 
     @if (stageOf('conduit').output?.checks?.length) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('conduit').status">
-          <span>🔁 Conduit — CI/CD Review</span>
-          <span class="result-meta" [class]="decisionClass(stageOf('conduit').output.decision)">
+      <div class="result-card" data-stage="conduit">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('conduit').status"></span>
+            Conduit — CI/CD Review
+          </div>
+          <span class="decision-tag" [class]="decisionClass(stageOf('conduit').output.decision)">
             {{ stageOf('conduit').output.decision }}
           </span>
         </div>
-        <div class="result-body">
-          <div class="checks-grid">
+        <div class="result-card-body">
+          <div class="check-grid">
             @for (c of stageOf('conduit').output.checks; track c.name) {
-              <div class="check-item"
-                   [class.pass]="c.status === 'PASS'"
-                   [class.fail]="c.status === 'FAIL'">
-                <span class="check-icon">{{ c.status === 'PASS' ? '✅' : c.status === 'WARN' ? '⚠️' : '❌' }}</span>
-                <span class="check-key">{{ c.name }}: {{ c.detail }}</span>
+              <div class="check-chip"
+                   [class.check-pass]="c.status === 'PASS'"
+                   [class.check-warn]="c.status === 'WARN'"
+                   [class.check-fail]="c.status === 'FAIL'">
+                <span>{{ c.status === 'PASS' ? '✓' : c.status === 'WARN' ? '⚠' : '✗' }}</span>
+                <span class="check-id">{{ c.name }}: {{ c.detail }}</span>
               </div>
             }
           </div>
@@ -368,29 +511,34 @@
     }
 
     @if (stageOf('scribe').output?.final_decision) {
-      <div class="result-block">
-        <div class="result-header" [attr.data-status]="stageOf('scribe').status">
-          <span>📝 Scribe — Pipeline Complete</span>
-          <span class="result-meta" [class]="decisionClass(stageOf('scribe').output.final_decision)">
+      <div class="result-card" data-stage="scribe">
+        <div class="result-card-header">
+          <div class="result-card-label">
+            <span class="result-stage-dot" [attr.data-status]="stageOf('scribe').status"></span>
+            Scribe — Pipeline Complete
+          </div>
+          <span class="decision-tag" [class]="decisionClass(stageOf('scribe').output.final_decision)">
             {{ stageOf('scribe').output.final_decision }}
           </span>
         </div>
-        <div class="result-body">
-          <div class="commit-card">
-            @if (stageOf('scribe').output.final_decision === 'SHIPPED') {
-              <div class="commit-icon">🚀</div>
-              <div class="commit-info">
-                <div class="commit-status">Ticket closed · Branch ready for review</div>
-                <div class="commit-message">engineering.md written · Jira transitioned to Done</div>
+        <div class="result-card-body">
+          @if (stageOf('scribe').output.final_decision === 'SHIPPED') {
+            <div class="commit-row">
+              <div class="shipped-icon">🚀</div>
+              <div>
+                <div class="commit-message">Ticket closed · Branch ready for review</div>
+                <div class="commit-push-status">engineering.md written · Jira transitioned to Done</div>
               </div>
-            } @else {
-              <div class="commit-icon">🚫</div>
-              <div class="commit-info">
-                <div class="commit-status skipped">Pipeline blocked — review required</div>
-                <div class="commit-message">Check Gate / Sentinel / Conduit results above</div>
+            </div>
+          } @else {
+            <div class="commit-row">
+              <div class="blocked-icon">🚫</div>
+              <div>
+                <div class="commit-message blocked-text">Pipeline blocked — review required</div>
+                <div class="commit-push-status">Check Gate / Sentinel / Conduit results above</div>
               </div>
-            }
-          </div>
+            </div>
+          }
         </div>
       </div>
     }

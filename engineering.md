@@ -1,8 +1,8 @@
 # Engineering Report: N/A — 
 
-**Generated:** 2026-03-18 22:58:29
+**Generated:** 2026-03-19 01:22:04
 **Branch:** ``
-**Pipeline Decision:** SHIPPED
+**Pipeline Decision:** BLOCKED
 
 ---
 
@@ -17,7 +17,7 @@
 
 ---
 
-## Acceptance Criteria — GATE (SHIP)
+## Acceptance Criteria — GATE (HOLD)
 
 | AC ID | Description | Result |
 |-------|-------------|--------|

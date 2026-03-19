@@ -32,4 +32,12 @@ export class ApiService {
   paceStatus(): Observable<any> {
     return this.http.get(`${BASE}/pace/status`);
   }
+
+  getLLMSettings(): Observable<any> {
+    return this.http.get(`${BASE}/settings/llm`);
+  }
+
+  saveLLMSettings(provider: string, apiKey: string): Observable<any> {
+    return this.http.post(`${BASE}/settings/llm`, { provider, api_key: apiKey });
+  }
 }
